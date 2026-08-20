@@ -5,9 +5,9 @@ description: >
   e-signature, token refresh and logout, built in pure Dart with no vendored
   native binaries.
 version: 0.0.1
-homepage: https://github.com/uae-pass-kit/uae_pass_kit
-repository: https://github.com/uae-pass-kit/uae_pass_kit
-issue_tracker: https://github.com/uae-pass-kit/uae_pass_kit/issues
+homepage: https://github.com/devamitkumartiwari/uae_pass_kit
+repository: https://github.com/devamitkumartiwari/uae_pass_kit
+issue_tracker: https://github.com/devamitkumartiwari/uae_pass_kit/issues
 
 environment:
   sdk: '>=3.13.0 <4.0.0'

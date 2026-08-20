@@ -6,6 +6,36 @@ App-to-app sign-in, full profile retrieval, document sharing (proof of presentat
 
 > **Unofficial.** Not endorsed by UAE Pass, Smart Dubai Government, or the UAE government. Built from `docs.uaepass.ae`'s public integration guides and by decompiling the real official Android SDK, purely to understand the wire protocol — no proprietary code is reused.
 
+## Quick start
+
+```dart
+final config = UaePassConfig(
+  clientId: 'your-client-id',
+  redirectUri: Uri.parse('https://yourapp.com/uaepass/callback'),
+  appCallbackScheme: 'yourappscheme',
+  environment: UaePassEnvironment.staging, // or .production
+);
+
+final uaePassKit = UaePassKit(
+  config: config,
+  tokenExchanger: BackendTokenExchanger(), // never UaePassDirectTokenExchanger in production
+);
+
+final result = await uaePassKit.signIn(context);
+switch (result) {
+  case UaePassAuthSuccess(:final code):
+    final token = await uaePassKit.exchangeAuthorizationCode(code);
+    final profile = await uaePassKit.getProfile(token);
+    print(profile.fullNameEn);
+  case UaePassAuthCancelled():
+    break; // user backed out — not an error
+  case UaePassAuthFailure(:final exception):
+    print('Sign-in failed: ${exception.message}');
+}
+```
+
+See `example/lib/main.dart` for a runnable app using UAE Pass's public staging sandbox credentials.
+
 ## Why pure Dart, no vendored SDK
 
 UAE Pass's own Android AAR and iOS framework are wrappers around a documented WebView-interception + URL-scheme-launch + plain HTTP flow — nothing cryptographically proprietary. Implementing that flow directly in Dart means:
@@ -25,6 +55,18 @@ UAE Pass's own Android AAR and iOS framework are wrappers around a documented We
 - **PDF e-signature** — the `esignsp/v2` flow, including multi-signer field placement.
 - **Install detection** — correct Android 11+ package-visibility handling out of the box.
 - **Environment safety** — exactly `staging` and `production`, the only two UAE Pass actually issues credentials for.
+
+## Environments
+
+Every UAE Pass host, install-detection identifier, and native app-callback scheme is derived from a single `UaePassEnvironment` value — nothing is ever hardcoded elsewhere in the plugin, so there's no way for a build to accidentally mix staging and production identifiers:
+
+| | `staging` | `production` |
+|---|---|---|
+| Identity/signing host | `stg-id.uaepass.ae` | `id.uaepass.ae` |
+| Android package (install detection) | `ae.uaepass.mainapp.stg` | `ae.uaepass.mainapp` |
+| iOS URL scheme (install detection / WebView interception) | `uaepassstg` | `uaepass` |
+
+`UaePassKit.isUaePassAppInstalled()`, `signIn()`'s WebView interception, and every `UaePassEndpoints` URL (`authorize`, `token`, `userInfo`, `logout`, `introspect`, and the `esignsp/v2` signing endpoints) all read from `config.environment` — none of them accept or construct a URL directly. `test/environment_test.dart` and `test/auth/redirect_interceptor_test.dart` run every assertion against both environments in a loop, including a dedicated regression test that a staging deep-link scheme is never mistaken for production's (and vice versa) — the direct fix for a real past incident where a `sandbox_stage` credential leaked into a production build.
 
 ## Security: where `client_secret` belongs
 
@@ -94,36 +136,6 @@ The package-visibility `<queries>` declaration for install detection ships in th
 ```
 
 `yourappscheme` must be a **unique scheme you register with UAE Pass during onboarding** — never reuse a demo/shared scheme.
-
-## Quick start
-
-```dart
-final config = UaePassConfig(
-  clientId: 'your-client-id',
-  redirectUri: Uri.parse('https://yourapp.com/uaepass/callback'),
-  appCallbackScheme: 'yourappscheme',
-  environment: UaePassEnvironment.staging, // or .production
-);
-
-final uaePassKit = UaePassKit(
-  config: config,
-  tokenExchanger: BackendTokenExchanger(), // never UaePassDirectTokenExchanger in production
-);
-
-final result = await uaePassKit.signIn(context);
-switch (result) {
-  case UaePassAuthSuccess(:final code):
-    final token = await uaePassKit.exchangeAuthorizationCode(code);
-    final profile = await uaePassKit.getProfile(token);
-    print(profile.fullNameEn);
-  case UaePassAuthCancelled():
-    break; // user backed out — not an error
-  case UaePassAuthFailure(:final exception):
-    print('Sign-in failed: ${exception.message}');
-}
-```
-
-See `example/lib/main.dart` for a runnable app using UAE Pass's public staging sandbox credentials.
 
 ## Platform support
 

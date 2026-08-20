@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:uae_pass_kit/src/api/uae_pass_http.dart';
 import 'package:uae_pass_kit/uae_pass_kit.dart';
 import 'package:uae_pass_kit/uae_pass_kit_platform_interface.dart';
@@ -14,10 +13,72 @@ import 'support/fake_uae_pass_kit_platform.dart';
 import 'support/fake_webview_platform.dart';
 import 'support/multipart_mock_client.dart';
 
-class _MockTokenExchanger extends Mock implements UaePassTokenExchanger {}
+class _FakeTokenExchanger implements UaePassTokenExchanger {
+  _FakeTokenExchanger({
+    this._onExchangeAuthorizationCode,
+    this._onRefreshToken,
+  });
 
-class _MockDocumentShareBackend extends Mock
-    implements UaePassDocumentShareBackend {}
+  final Future<UaePassTokenResponse> Function({
+    required String code,
+    required Uri redirectUri,
+  })?
+  _onExchangeAuthorizationCode;
+  final Future<UaePassTokenResponse> Function({required String refreshToken})?
+  _onRefreshToken;
+
+  int exchangeAuthorizationCodeCallCount = 0;
+  String? lastCode;
+  Uri? lastRedirectUri;
+
+  int refreshTokenCallCount = 0;
+  String? lastRefreshToken;
+
+  @override
+  Future<UaePassTokenResponse> exchangeAuthorizationCode({
+    required String code,
+    required Uri redirectUri,
+  }) {
+    exchangeAuthorizationCodeCallCount++;
+    lastCode = code;
+    lastRedirectUri = redirectUri;
+    return _onExchangeAuthorizationCode!(code: code, redirectUri: redirectUri);
+  }
+
+  @override
+  Future<UaePassTokenResponse> refreshToken({required String refreshToken}) {
+    refreshTokenCallCount++;
+    lastRefreshToken = refreshToken;
+    return _onRefreshToken!(refreshToken: refreshToken);
+  }
+}
+
+class _FakeDocumentShareBackend implements UaePassDocumentShareBackend {
+  _FakeDocumentShareBackend({
+    required this.shareHandle,
+    required this.statusesById,
+  });
+
+  final UaePassDocumentShareHandle shareHandle;
+  final Map<String, List<UaePassDocumentShareItem>> statusesById;
+
+  UaePassDocumentShareRequest? lastRequest;
+
+  @override
+  Future<UaePassDocumentShareHandle> createShareRequest(
+    UaePassDocumentShareRequest request,
+  ) async {
+    lastRequest = request;
+    return shareHandle;
+  }
+
+  @override
+  Future<List<UaePassDocumentShareItem>> fetchStatus(
+    String proofOfPresentationRequestId,
+  ) async {
+    return statusesById[proofOfPresentationRequestId] ?? const [];
+  }
+}
 
 void main() {
   setUp(() {
@@ -26,21 +87,6 @@ void main() {
     // channel — unavailable without TestWidgetsFlutterBinding. A fake
     // keeps these tests plugin-logic-only.
     UaePassKitPlatform.instance = FakeUaePassKitPlatform();
-  });
-
-  setUpAll(() {
-    registerFallbackValue(Uri.parse('https://example.com'));
-    registerFallbackValue(
-      UaePassDocumentShareRequest(
-        accessToken: 't',
-        emiratesId: 'e',
-        uuid: 'u',
-        documents: const [],
-        successUrl: Uri.parse('testapp://success'),
-        failureUrl: Uri.parse('testapp://failure'),
-        origin: UaePassDocumentShareOrigin.mobile,
-      ),
-    );
   });
 
   final config = UaePassConfig(
@@ -58,7 +104,7 @@ void main() {
   }) {
     return UaePassKit(
       config: config,
-      tokenExchanger: tokenExchanger ?? _MockTokenExchanger(),
+      tokenExchanger: tokenExchanger ?? _FakeTokenExchanger(),
       signingTokenExchanger: signingTokenExchanger,
       documentShareBackend: documentShareBackend,
       httpClient: UaePassHttpClient(client: mockClient),
@@ -93,15 +139,13 @@ void main() {
   group('exchangeAuthorizationCode / refreshAccessToken', () {
     test('delegates to the injected tokenExchanger with the configured '
         'redirectUri', () async {
-      final exchanger = _MockTokenExchanger();
-      when(
-        () => exchanger.exchangeAuthorizationCode(
-          code: any(named: 'code'),
-          redirectUri: any(named: 'redirectUri'),
-        ),
-      ).thenAnswer(
-        (_) async =>
-            const UaePassTokenResponse(accessToken: 'a', tokenType: 'Bearer'),
+      final exchanger = _FakeTokenExchanger(
+        onExchangeAuthorizationCode:
+            ({required code, required redirectUri}) async =>
+                const UaePassTokenResponse(
+                  accessToken: 'a',
+                  tokenType: 'Bearer',
+                ),
       );
 
       final client = buildClient(
@@ -111,20 +155,14 @@ void main() {
 
       final result = await client.exchangeAuthorizationCode('code-1');
       expect(result.accessToken, 'a');
-      verify(
-        () => exchanger.exchangeAuthorizationCode(
-          code: 'code-1',
-          redirectUri: config.redirectUri,
-        ),
-      ).called(1);
+      expect(exchanger.exchangeAuthorizationCodeCallCount, 1);
+      expect(exchanger.lastCode, 'code-1');
+      expect(exchanger.lastRedirectUri, config.redirectUri);
     });
 
     test('delegates refresh to the injected tokenExchanger', () async {
-      final exchanger = _MockTokenExchanger();
-      when(
-        () => exchanger.refreshToken(refreshToken: any(named: 'refreshToken')),
-      ).thenAnswer(
-        (_) async =>
+      final exchanger = _FakeTokenExchanger(
+        onRefreshToken: ({required refreshToken}) async =>
             const UaePassTokenResponse(accessToken: 'b', tokenType: 'Bearer'),
       );
 
@@ -135,7 +173,8 @@ void main() {
 
       final result = await client.refreshAccessToken('refresh-1');
       expect(result.accessToken, 'b');
-      verify(() => exchanger.refreshToken(refreshToken: 'refresh-1')).called(1);
+      expect(exchanger.refreshTokenCallCount, 1);
+      expect(exchanger.lastRefreshToken, 'refresh-1');
     });
   });
 
@@ -196,19 +235,18 @@ void main() {
 
     test('emits DocumentShareComplete once every item reaches a terminal '
         'state', () async {
-      final backend = _MockDocumentShareBackend();
-      when(() => backend.createShareRequest(any())).thenAnswer(
-        (_) async => const UaePassDocumentShareHandle(
+      final backend = _FakeDocumentShareBackend(
+        shareHandle: const UaePassDocumentShareHandle(
           proofOfPresentationRequestId: 'pop-1',
         ),
-      );
-      when(() => backend.fetchStatus('pop-1')).thenAnswer(
-        (_) async => [
-          UaePassDocumentShareItem.fromJson({
-            'documentType': 'EmiratesId',
-            'reqAuthorized': 'Y',
-          }),
-        ],
+        statusesById: {
+          'pop-1': [
+            UaePassDocumentShareItem.fromJson({
+              'documentType': 'EmiratesId',
+              'reqAuthorized': 'Y',
+            }),
+          ],
+        },
       );
 
       final client = buildClient(
@@ -239,19 +277,18 @@ void main() {
 
     test('emits DocumentShareTimedOut once the deadline passes without a '
         'terminal state', () async {
-      final backend = _MockDocumentShareBackend();
-      when(() => backend.createShareRequest(any())).thenAnswer(
-        (_) async => const UaePassDocumentShareHandle(
+      final backend = _FakeDocumentShareBackend(
+        shareHandle: const UaePassDocumentShareHandle(
           proofOfPresentationRequestId: 'pop-1',
         ),
-      );
-      when(() => backend.fetchStatus('pop-1')).thenAnswer(
-        (_) async => [
-          UaePassDocumentShareItem.fromJson({
-            'documentType': 'EmiratesId',
-            'reqAuthorized': 'P',
-          }),
-        ],
+        statusesById: {
+          'pop-1': [
+            UaePassDocumentShareItem.fromJson({
+              'documentType': 'EmiratesId',
+              'reqAuthorized': 'P',
+            }),
+          ],
+        },
       );
 
       final client = buildClient(

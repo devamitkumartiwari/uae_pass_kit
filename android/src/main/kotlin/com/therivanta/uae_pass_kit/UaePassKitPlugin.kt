@@ -1,4 +1,4 @@
-package com.uaepasskit.uae_pass_kit
+package com.therivanta.uae_pass_kit
 
 import android.content.Context
 import android.content.pm.PackageManager

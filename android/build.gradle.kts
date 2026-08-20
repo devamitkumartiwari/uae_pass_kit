@@ -1,4 +1,4 @@
-group = "com.uaepasskit.uae_pass_kit"
+group = "com.therivanta.uae_pass_kit"
 version = "1.0-SNAPSHOT"
 
 buildscript {
@@ -26,9 +26,9 @@ plugins {
 }
 
 android {
-    namespace = "com.uaepasskit.uae_pass_kit"
+    namespace = "com.therivanta.uae_pass_kit"
 
-    compileSdk = 36
+    compileSdk = 37
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -39,29 +39,10 @@ android {
         getByName("main") {
             java.srcDirs("src/main/kotlin")
         }
-        getByName("test") {
-            java.srcDirs("src/test/kotlin")
-        }
     }
 
     defaultConfig {
-        minSdk = 24
-    }
-
-    testOptions {
-        unitTests {
-            isIncludeAndroidResources = true
-            all {
-                it.useJUnitPlatform()
-
-                it.outputs.upToDateWhen { false }
-
-                it.testLogging {
-                    events("passed", "skipped", "failed", "standardOut", "standardError")
-                    showStandardStreams = true
-                }
-            }
-        }
+        minSdk = 28
     }
 }
 
@@ -69,9 +50,4 @@ kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
-}
-
-dependencies {
-    testImplementation("org.jetbrains.kotlin:kotlin-test")
-    testImplementation("org.mockito:mockito-core:5.0.0")
 }

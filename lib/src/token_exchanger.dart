@@ -38,9 +38,9 @@ abstract class UaePassTokenExchanger {
 ///
 /// **Sandbox/development use only.** Embedding `client_secret` in a shipped
 /// app or web bundle exposes it to anyone who inspects the binary or
-/// network traffic — exactly the flaw found in `flutter_uae_pass`'s
-/// implementation (iOS embeds it on-device; the web implementation sends
-/// it from browser JavaScript). For a production integration, implement
+/// network traffic — exactly the flaw found in prior community wrappers
+/// (iOS embeds it on-device; the web implementation sends it from browser
+/// JavaScript). For a production integration, implement
 /// [UaePassTokenExchanger] against your backend instead.
 class UaePassDirectTokenExchanger implements UaePassTokenExchanger {
   /// Creates a direct token exchanger for [environment] using [clientId]

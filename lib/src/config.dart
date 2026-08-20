@@ -8,8 +8,8 @@ const String kUaePassDefaultScope = 'urn:uae:digitalid:profile:general';
 /// Immutable configuration for a [UaePassEnvironment] integration.
 ///
 /// There is deliberately no default [redirectUri] or [appCallbackScheme] —
-/// unlike `flutter_uae_pass`, which defaults `redirectUri` to a demo URL
-/// (`https://oauthtest.com/authorization/return`) that integrators could
+/// unlike prior community wrappers, which default `redirectUri` to a demo
+/// URL (`https://oauthtest.com/authorization/return`) that integrators could
 /// accidentally leave in a production build. Both must be explicitly
 /// supplied and must match what was registered with UAE Pass during
 /// onboarding.

@@ -128,8 +128,9 @@ class UaePassRedirectInterceptor {
   ///
   /// A user cancelling or being declined inside the UAE Pass UI is treated
   /// as [UaePassAuthCancelled], never as an exception — this is the direct
-  /// structural fix for `flutter_uae_pass` issue #7, where an unguarded
-  /// null in the equivalent native callback crashed the whole host app.
+  /// structural fix for a well-documented issue in prior community
+  /// wrappers, where an unguarded null in the equivalent native callback
+  /// crashed the whole host app.
   UaePassAuthResult parseFinalRedirect(
     Uri uri, {
     required String expectedState,

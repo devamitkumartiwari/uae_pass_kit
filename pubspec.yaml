@@ -18,21 +18,20 @@ dependencies:
     sdk: flutter
   flutter_web_plugins:
     sdk: flutter
-  web: ^1.0.0
-  plugin_platform_interface: ^2.0.2
-  webview_flutter: ^4.10.0
-  app_links: ^6.3.3
-  http: ^1.2.2
-  crypto: ^3.0.6
-  url_launcher: ^6.3.1
+  web: '>=1.0.0 <3.0.0'
+  plugin_platform_interface: '>=2.0.0 <4.0.0'
+  webview_flutter: '>=4.0.0 <6.0.0'
+  app_links: '>=6.0.0 <8.0.0'
+  http: '>=1.0.0 <2.0.0'
+  crypto: '>=2.0.0 <4.0.0'
+  url_launcher: '>=6.0.0 <7.0.0'
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
-  mocktail: ^1.0.4
-  webview_flutter_platform_interface: ^2.10.0
-  url_launcher_platform_interface: ^2.3.2
+  flutter_lints: '>=5.0.0 <7.0.0'
+  webview_flutter_platform_interface: '>=2.0.0 <3.0.0'
+  url_launcher_platform_interface: '>=2.0.0 <3.0.0'
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -42,7 +41,7 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.uaepasskit.uae_pass_kit
+        package: com.therivanta.uae_pass_kit
         pluginClass: UaePassKitPlugin
       ios:
         pluginClass: UaePassKitPlugin

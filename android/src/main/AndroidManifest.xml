@@ -1,14 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.uaepasskit.uae_pass_kit">
+  package="com.therivanta.uae_pass_kit">
 
   <!--
     Android 11+ (API 30+) package-visibility: without this <queries>
     declaration, PackageManager.getPackageInfo() for the UAE Pass app
-    silently fails as if it were never installed, even when it is.
-    flutter_uae_pass GitHub issues #15/#9 ("UAE Pass app not found" despite
-    being installed) are exactly this class of bug. Declared here, in the
-    plugin's own manifest, so it merges into every consuming app
-    automatically and can never be forgotten.
+    silently fails as if it were never installed, even when it is — a
+    well-documented class of bug ("UAE Pass app not found" despite being
+    installed) in prior community wrappers. Declared here, in the plugin's
+    own manifest, so it merges into every consuming app automatically and
+    can never be forgotten.
 
     Limited to staging and production only, matching this plugin's
     UaePassEnvironment — the qa/dev package IDs found while researching the

@@ -13,8 +13,8 @@ jobs:
       matrix:
         # Runs against both stable and beta so a breaking Flutter/Dart
         # change is caught here, not by an integrator on a newer channel —
-        # this class of bug (Xcode 16, Flutter 3.38/3.44) repeatedly broke
-        # flutter_uae_pass with no CI to catch it in advance.
+        # this class of bug (Xcode 16, Flutter 3.38/3.44) has repeatedly
+        # broken prior community wrappers with no CI to catch it in advance.
         flutter-channel: [stable, beta]
     steps:
       - uses: actions/checkout@v4

@@ -133,16 +133,6 @@ See `example/lib/main.dart` for a runnable app using UAE Pass's public staging s
 | iOS | ✅ |
 | Web | Not implemented here. UAE Pass documents a materially different flow for web (a plain full-page OAuth2 redirect against a real, reachable `redirect_uri`), not the WebView-interception app-to-app dance this package implements. `UaePassEnvironment.endpoints` and the token/profile/logout calls work unchanged on any platform if you want to drive that redirect flow yourself. |
 
-## Migrating from `flutter_uae_pass`
-
-| `flutter_uae_pass` | `uae_pass_kit` |
-|---|---|
-| `UaePass().setUpEnvironment(...)` then `signIn()` | `UaePassConfig(...)` + `UaePassKit(config: ..., tokenExchanger: ...)`, then `signIn(context)` |
-| `getAccessToken(code)` (direct, on-device, with embedded secret) | `exchangeAuthorizationCode(code)`, routed through your `UaePassTokenExchanger` |
-| `getProfile(accessToken)` (partial field set) | `getProfile(token)` — full field set |
-| `signOut()` (local-only) | `logout()` — clears local state **and** notifies UAE Pass |
-| — (not offered) | `refreshAccessToken`, `requestDocumentShare`, `signDocument` |
-
 ## Development
 
 ```

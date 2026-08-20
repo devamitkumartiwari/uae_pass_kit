@@ -146,7 +146,7 @@ class UaePassKit {
   /// plugin's WebView (terminating the local SSO session) and notifies
   /// UAE Pass's `/idshub/logout` endpoint.
   ///
-  /// Note this is a real improvement over `flutter_uae_pass`'s
+  /// Note this is a real improvement over prior community wrappers' plain
   /// `signOut()`, which only clears local state and never calls
   /// `/idshub/logout` at all — but true single-logout on UAE Pass's side
   /// is only guaranteed if [logoutUrl] is actually navigated to inside the

@@ -3,7 +3,7 @@ import 'dart:math';
 
 /// Generates cryptographically random `state` values for CSRF protection.
 ///
-/// `flutter_uae_pass` defaults `state` to a hardcoded literal
+/// Prior community wrappers default `state` to a hardcoded literal
 /// (`"HnlHOJTkTb66Y5H"` in `setUpEnvironment`, `"123123213"` in
 /// `setUpSandbox`) unless the caller overrides it — meaning most
 /// integrators get effectively no CSRF protection by default. This plugin

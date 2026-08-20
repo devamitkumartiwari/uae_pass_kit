@@ -15,7 +15,7 @@ void main() {
     await tester.pumpWidget(const UaePassKitExampleApp());
 
     expect(
-      find.widgetWithText(ElevatedButton, 'Sign in with UAE PASS (staging)'),
+      find.widgetWithText(ElevatedButton, 'Sign in with UAE PASS'),
       findsOneWidget,
     );
   });

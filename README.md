@@ -18,7 +18,9 @@ final config = UaePassConfig(
 
 final uaePassKit = UaePassKit(
   config: config,
-  tokenExchanger: BackendTokenExchanger(), // never UaePassDirectTokenExchanger in production
+  tokenExchanger: BackendTokenExchanger(), // recommended: exchange via your backend
+  // or, if you'd rather skip the backend for now (see Security below for the tradeoff):
+  // clientSecret: 'your-client-secret',
 );
 
 final result = await uaePassKit.signIn(context);
@@ -72,7 +74,7 @@ Every UAE Pass host, install-detection identifier, and native app-callback schem
 
 UAE Pass's token endpoint is a **confidential-client** endpoint (HTTP Basic `client_id:client_secret`) — there is no PKCE alternative documented anywhere. That means `client_secret` structurally does not belong in a shipped mobile or web app.
 
-This plugin never bakes that assumption in. `UaePassTokenExchanger` and `UaePassSigningTokenExchanger` are interfaces — `UaePassDirectTokenExchanger`/`UaePassDirectSigningTokenExchanger` (direct on-device exchange) are provided **only for local development against UAE Pass's public staging POC credentials** (`sandbox_stage`/`sandbox_stage`). For any production integration, implement the interface against your own backend:
+This plugin never bakes that assumption in — `UaePassTokenExchanger` and `UaePassSigningTokenExchanger` are interfaces, so the exchange step is pluggable. The recommended path for production is to implement the interface against your own backend:
 
 ```dart
 class BackendTokenExchanger implements UaePassTokenExchanger {
@@ -94,6 +96,17 @@ class BackendTokenExchanger implements UaePassTokenExchanger {
 ```
 
 `UaePassDocumentShareBackend` follows the same pattern — UAE Pass's Data Sharing Authorization API is HMAC-signed and must be called server-to-server.
+
+**Don't have a backend (yet)?** Pass `clientSecret` directly to `UaePassKit` instead of `tokenExchanger`, and it builds a `UaePassDirectTokenExchanger` for you — calling UAE Pass's token endpoint straight from the app, against `staging` or `production` alike:
+
+```dart
+final uaePassKit = UaePassKit(
+  config: config,
+  clientSecret: 'your-client-secret', // instead of tokenExchanger:
+);
+```
+
+Know what you're trading away first: `client_secret` ships inside your app binary this way, extractable by anyone who decompiles it or inspects network traffic. That's fine for an internal app, prototyping, or the sandbox — for anything else, prefer the backend-proxying `tokenExchanger` above. `UaePassSigningTokenExchanger` has the same two options (`UaePassDirectSigningTokenExchanger`, used the same way), needed only if you call `signDocument`.
 
 ## Setup
 

@@ -409,4 +409,87 @@ void main() {
       expect(bytes, [9, 9, 9]);
     });
   });
+
+  group('UaePassKit constructor', () {
+    for (final environment in UaePassEnvironment.values) {
+      test('clientSecret builds a UaePassDirectTokenExchanger for '
+          '${environment.name}', () {
+        final envConfig = UaePassConfig(
+          clientId: 'client-1',
+          redirectUri: Uri.parse('https://example.com/cb'),
+          appCallbackScheme: 'testapp',
+          environment: environment,
+        );
+        final client = UaePassKit(config: envConfig, clientSecret: 'secret-1');
+
+        final exchanger = client.tokenExchanger as UaePassDirectTokenExchanger;
+        expect(exchanger.clientId, 'client-1');
+        expect(exchanger.clientSecret, 'secret-1');
+        expect(exchanger.environment, environment);
+      });
+    }
+
+    test('throws when both tokenExchanger and clientSecret are given', () {
+      expect(
+        () => UaePassKit(
+          config: config,
+          tokenExchanger: _FakeTokenExchanger(),
+          clientSecret: 'secret-1',
+        ),
+        throwsA(isA<UaePassConfigurationException>()),
+      );
+    });
+
+    test('throws when neither tokenExchanger nor clientSecret is given', () {
+      expect(
+        () => UaePassKit(config: config),
+        throwsA(isA<UaePassConfigurationException>()),
+      );
+    });
+
+    for (final environment in UaePassEnvironment.values) {
+      test('signingClientSecret builds a UaePassDirectSigningTokenExchanger '
+          'for ${environment.name}', () {
+        final envConfig = UaePassConfig(
+          clientId: 'client-1',
+          redirectUri: Uri.parse('https://example.com/cb'),
+          appCallbackScheme: 'testapp',
+          environment: environment,
+        );
+        final client = UaePassKit(
+          config: envConfig,
+          clientSecret: 'secret-1',
+          signingClientSecret: 'signing-secret-1',
+        );
+
+        final exchanger =
+            client.signingTokenExchanger as UaePassDirectSigningTokenExchanger;
+        expect(exchanger.clientId, 'client-1');
+        expect(exchanger.clientSecret, 'signing-secret-1');
+        expect(exchanger.environment, environment);
+      });
+    }
+
+    test('signingTokenExchanger defaults to null when neither is given', () {
+      final client = UaePassKit(config: config, clientSecret: 'secret-1');
+      expect(client.signingTokenExchanger, isNull);
+    });
+
+    test('throws when both signingTokenExchanger and signingClientSecret '
+        'are given', () {
+      expect(
+        () => UaePassKit(
+          config: config,
+          clientSecret: 'secret-1',
+          signingTokenExchanger: UaePassDirectSigningTokenExchanger(
+            clientId: 'client-1',
+            clientSecret: 'signing-secret-1',
+            environment: config.environment,
+          ),
+          signingClientSecret: 'signing-secret-1',
+        ),
+        throwsA(isA<UaePassConfigurationException>()),
+      );
+    });
+  });
 }

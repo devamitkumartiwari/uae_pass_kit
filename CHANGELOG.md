@@ -3,6 +3,18 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.0.2
+
+- New `UaePassKit` constructor shortcuts, `clientSecret` and `signingClientSecret` — a single-parameter alternative to implementing `UaePassTokenExchanger`/`UaePassSigningTokenExchanger` yourself, building the direct exchangers for you against either `staging` or `production`. Passing both a shortcut and its exchanger, or neither, now throws a `UaePassConfigurationException` immediately instead of failing silently.
+- Fixed a real dependency bug: the `url_launcher` lower bound (`>=6.0.0`) allowed versions that predate the `canLaunchUrl`/`launchUrl`/`LaunchMode` functional API this plugin actually calls; raised to `>=6.1.0`.
+- Bumped all dependency version constraints to their current latest releases (`web`, `plugin_platform_interface`, `webview_flutter`, `app_links`, `http`, `crypto`, `url_launcher`, `webview_flutter_platform_interface`).
+- Relicensed from MIT to Apache-2.0.
+- Raised Android `compileSdk` to 37 and `minSdk` to 28; raised the iOS deployment target from 15.0 to 16.0 (podspec, `Package.swift`, and the example Xcode project).
+- Removed the `mockito` and `mocktail` test dependencies in favor of hand-written fakes; removed a stale Kotlin plugin test that exercised a method (`getPlatformVersion`) no longer present in the plugin.
+- Trimmed the `pubspec.yaml` description to pub.dev's recommended 60–180 character range.
+- README: moved Quick start to the top of the page; added an Environments section documenting how every URL/package-ID/scheme is derived per environment and cross-referencing the test coverage that guards against a staging/production mixup.
+- Example app: added an install-detection status indicator, a working refresh-token demo, a working e-signature demo against the public sandbox, and a wired-up (but backend-less) document-sharing demo that surfaces the real `UaePassConfigurationException`.
+
 ## 0.0.1
 
 Initial release. Full feature set, no staged/partial functionality:

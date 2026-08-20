@@ -34,14 +34,24 @@ abstract class UaePassTokenExchanger {
 }
 
 /// A [UaePassTokenExchanger] that calls UAE Pass's `/idshub/token` endpoint
-/// directly from the running app, using an embedded `client_secret`.
+/// directly from the running app, using an embedded `client_secret`. Works
+/// against either [UaePassEnvironment.staging] or
+/// [UaePassEnvironment.production] — `environment` is a plain constructor
+/// argument, not hardcoded.
 ///
-/// **Sandbox/development use only.** Embedding `client_secret` in a shipped
-/// app or web bundle exposes it to anyone who inspects the binary or
-/// network traffic — exactly the flaw found in prior community wrappers
-/// (iOS embeds it on-device; the web implementation sends it from browser
-/// JavaScript). For a production integration, implement
-/// [UaePassTokenExchanger] against your backend instead.
+/// [UaePassKit]'s `clientSecret` constructor parameter is a shortcut for
+/// this exact class.
+///
+/// **Understand the tradeoff before using this in production.** Embedding
+/// `client_secret` in a shipped app or web bundle exposes it to anyone who
+/// inspects the binary or network traffic — exactly the flaw found in
+/// prior community wrappers (iOS embeds it on-device; the web
+/// implementation sends it from browser JavaScript). If that's an
+/// acceptable tradeoff for your integration (e.g. an internal app, or
+/// while you haven't built a backend yet), this class is a fully
+/// functional way to run against production. If not, implement
+/// [UaePassTokenExchanger] against your own backend instead, so
+/// `client_secret` never ships in the app at all.
 class UaePassDirectTokenExchanger implements UaePassTokenExchanger {
   /// Creates a direct token exchanger for [environment] using [clientId]
   /// and [clientSecret].

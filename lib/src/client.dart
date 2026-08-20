@@ -31,19 +31,84 @@ import 'token_exchanger.dart';
 class UaePassKit {
   /// Creates a UAE Pass client for [config].
   ///
-  /// [tokenExchanger] performs the login token exchange — supply a
-  /// backend-proxying implementation in production (see
-  /// [UaePassTokenExchanger]). [signingTokenExchanger] and
-  /// [documentShareBackend] are optional and only required if you call
-  /// [signDocument] or [requestDocumentShare] respectively.
+  /// Provide exactly one of [tokenExchanger] or [clientSecret]:
+  /// - [tokenExchanger] performs the login token exchange against your own
+  ///   backend (see [UaePassTokenExchanger]) — the recommended approach for
+  ///   production, since `client_secret` never has to ship in this app.
+  /// - [clientSecret] is a shortcut that builds a [UaePassDirectTokenExchanger]
+  ///   for you, calling UAE Pass's token endpoint directly from this app with
+  ///   [UaePassConfig.clientId]/[clientSecret] for [UaePassConfig.environment]
+  ///   — works against both `staging` and `production`, but see
+  ///   [UaePassDirectTokenExchanger]'s warning before using it for the latter.
+  ///
+  /// [signingTokenExchanger] (or its [signingClientSecret] shortcut) is
+  /// only required if you call [signDocument]; [documentShareBackend] only
+  /// if you call [requestDocumentShare].
   UaePassKit({
     required this.config,
-    required this.tokenExchanger,
-    this.signingTokenExchanger,
+    UaePassTokenExchanger? tokenExchanger,
+    String? clientSecret,
+    UaePassSigningTokenExchanger? signingTokenExchanger,
+    String? signingClientSecret,
     this.documentShareBackend,
     UaePassHttpClient? httpClient,
-  }) : _http = httpClient ?? UaePassHttpClient(),
+  }) : tokenExchanger = _resolveTokenExchanger(
+         tokenExchanger: tokenExchanger,
+         clientSecret: clientSecret,
+         config: config,
+       ),
+       signingTokenExchanger = _resolveSigningTokenExchanger(
+         signingTokenExchanger: signingTokenExchanger,
+         signingClientSecret: signingClientSecret,
+         config: config,
+       ),
+       _http = httpClient ?? UaePassHttpClient(),
        _interceptor = UaePassRedirectInterceptor(config);
+
+  static UaePassTokenExchanger _resolveTokenExchanger({
+    required UaePassTokenExchanger? tokenExchanger,
+    required String? clientSecret,
+    required UaePassConfig config,
+  }) {
+    if (tokenExchanger != null && clientSecret != null) {
+      throw const UaePassConfigurationException(
+        'Provide only one of tokenExchanger or clientSecret, not both.',
+      );
+    }
+    if (tokenExchanger != null) return tokenExchanger;
+    if (clientSecret != null) {
+      return UaePassDirectTokenExchanger(
+        clientId: config.clientId,
+        clientSecret: clientSecret,
+        environment: config.environment,
+      );
+    }
+    throw const UaePassConfigurationException(
+      'Provide either tokenExchanger or clientSecret.',
+    );
+  }
+
+  static UaePassSigningTokenExchanger? _resolveSigningTokenExchanger({
+    required UaePassSigningTokenExchanger? signingTokenExchanger,
+    required String? signingClientSecret,
+    required UaePassConfig config,
+  }) {
+    if (signingTokenExchanger != null && signingClientSecret != null) {
+      throw const UaePassConfigurationException(
+        'Provide only one of signingTokenExchanger or signingClientSecret, '
+        'not both.',
+      );
+    }
+    if (signingTokenExchanger != null) return signingTokenExchanger;
+    if (signingClientSecret != null) {
+      return UaePassDirectSigningTokenExchanger(
+        clientId: config.clientId,
+        clientSecret: signingClientSecret,
+        environment: config.environment,
+      );
+    }
+    return null;
+  }
 
   /// This client's configuration.
   final UaePassConfig config;

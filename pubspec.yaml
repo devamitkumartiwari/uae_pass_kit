@@ -2,7 +2,7 @@ name: uae_pass_kit
 description: >
   Unofficial UAE Pass Flutter plugin: app-to-app sign-in, profile retrieval,
   document sharing, PDF e-signature, token refresh and logout in pure Dart.
-version: 0.0.1
+version: 0.0.2
 homepage: https://github.com/devamitkumartiwari/uae_pass_kit
 repository: https://github.com/devamitkumartiwari/uae_pass_kit
 issue_tracker: https://github.com/devamitkumartiwari/uae_pass_kit/issues

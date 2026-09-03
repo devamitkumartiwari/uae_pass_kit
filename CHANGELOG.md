@@ -3,6 +3,14 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.0.3
+
+- **Fixed app-to-app deep-linking never returning to the app.** The app-callback URL built for the native UAE Pass app's handoff was shaped `yourapp://resume_authn?url=...` (two slashes, `resume_authn` as the host) instead of UAE Pass's own documented `yourapp:///resume_authn?url=...` (three slashes, empty host, `/resume_authn` as the path). UAE Pass's own integration docs warn this exact mismatch causes the native app to fall back to opening the callback in the system browser instead of routing back into your app. Fixed to match the documented format exactly.
+- Added an `onNativeAppLaunchFailed` fallback: when the UAE Pass app is detected as installed but the actual launch attempt fails (disabled, frozen, a broken install, etc.), `signIn()` now falls back to the App-to-Web flow in the same screen instead of cancelling the sign-in outright — completing UAE Pass's full three-way flow-selection matrix (installed / not installed / installed-but-unopenable).
+- Removed the unused `web` package dependency (never actually imported anywhere in the plugin).
+- README: added a dedicated Deep Linking section covering every platform's setup, the three flow types, and the distinction between UAE Pass's install-detection schemes and your own app-callback scheme.
+- Example app: demonstrates all three deep-linking flows.
+
 ## 0.0.2
 
 - New `UaePassKit` constructor shortcuts, `clientSecret` and `signingClientSecret` — a single-parameter alternative to implementing `UaePassTokenExchanger`/`UaePassSigningTokenExchanger` yourself, building the direct exchangers for you against either `staging` or `production`. Passing both a shortcut and its exchanger, or neither, now throws a `UaePassConfigurationException` immediately instead of failing silently.

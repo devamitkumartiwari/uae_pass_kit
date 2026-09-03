@@ -86,13 +86,28 @@ class _SignInPageState extends State<SignInPage> {
   String? _signingStatus;
   String? _documentShareStatus;
 
+  /// Which of the three deep-linking flows the last sign-in attempt took —
+  /// see the README's "Deep Linking" section for what each one means.
+  String? _lastFlowType;
+
   @override
   void initState() {
     super.initState();
 
     _config = UaePassConfig(
       clientId: _sandboxClientId,
+      // The OAuth redirect_uri — a plain https:// URL carrying the final
+      // code/state. It never needs to be reachable: the plugin's WebView
+      // intercepts navigation to it before it would actually load, so no
+      // platform (manifest/plist) configuration is needed for this one.
       redirectUri: Uri.parse('https://uaepasskit.dev/example/callback'),
+      // This app's OWN scheme — registered below in both
+      // android/app/src/main/AndroidManifest.xml and
+      // ios/Runner/Info.plist — used only as the return address when the
+      // native UAE Pass app hands control back (the app-to-app flow). See
+      // the README's "Deep Linking" section for the full explanation of
+      // why this is a distinct value from redirectUri above, and from UAE
+      // Pass's own uaepass://uaepassstg:// schemes.
       appCallbackScheme: 'uaepasskitexample',
       environment: UaePassEnvironment.staging,
       locale: UaePassLocale.en,
@@ -135,8 +150,19 @@ class _SignInPageState extends State<SignInPage> {
       _token = null;
       _signingStatus = null;
       _documentShareStatus = null;
+      // This is what UaePassKit.signIn() itself checks to pick a flow — see
+      // the README's "Deep Linking" section. If the app is installed but
+      // can't actually be opened, the plugin falls back to App-to-Web
+      // automatically mid-flow, so this label reflects the *attempted*
+      // flow, not necessarily which one the user ended up completing.
+      _lastFlowType = _isAppInstalled == true ? 'App-to-App' : 'App-to-Web';
     });
 
+    // Note there's no deep-link listening code anywhere in this file — the
+    // app-to-app callback (and the app-to-web fallback) are handled
+    // entirely inside signIn() itself. See the README's "Deep Linking" →
+    // "Callback handling" section for why that's true even if this app
+    // also has its own unrelated deep links elsewhere.
     final result = await _uaePassKit.signIn(context);
 
     switch (result) {
@@ -182,6 +208,7 @@ class _SignInPageState extends State<SignInPage> {
       _token = null;
       _signingStatus = null;
       _documentShareStatus = null;
+      _lastFlowType = null;
       _statusMessage = 'Signed out.';
     });
   }
@@ -405,6 +432,10 @@ class _SignInPageState extends State<SignInPage> {
               const Text('AR', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
+          if (_lastFlowType != null) ...[
+            const SizedBox(height: 12),
+            _FlowTypeChip(flowType: _lastFlowType!),
+          ],
           const SizedBox(height: 24),
           Text('Welcome,', style: Theme.of(context).textTheme.titleLarge),
           Text(
@@ -493,6 +524,31 @@ class _SignInPageState extends State<SignInPage> {
             style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Shows which of the three deep-linking flows the last sign-in attempt
+/// took — see the README's "Deep Linking" section for what each one means.
+class _FlowTypeChip extends StatelessWidget {
+  const _FlowTypeChip({required this.flowType});
+  final String flowType;
+
+  @override
+  Widget build(BuildContext context) {
+    final isAppToApp = flowType == 'App-to-App';
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Chip(
+        avatar: Icon(
+          isAppToApp ? Icons.phone_iphone : Icons.public,
+          size: 18,
+          color: const Color(0xFFAD904C),
+        ),
+        label: Text('Signed in via $flowType'),
+        backgroundColor: const Color(0xFFAD904C).withValues(alpha: 0.1),
+        side: BorderSide.none,
       ),
     );
   }

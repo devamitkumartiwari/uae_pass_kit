@@ -48,6 +48,7 @@ void main() {
       Future<Future<Uri?>> pumpFlow(
         WidgetTester tester, {
         required Uri initialUrl,
+        Uri Function()? onNativeAppLaunchFailed,
       }) async {
         late Future<Uri?> pushFuture;
         await tester.pumpWidget(
@@ -66,6 +67,7 @@ void main() {
                         extractOriginalUrl: interceptor.extractOriginalUrl,
                         isFinalUrl: interceptor.isFinalRedirect,
                         appLinkStream: appLinkController.stream,
+                        onNativeAppLaunchFailed: onNativeAppLaunchFailed,
                       ),
                     ),
                   );
@@ -137,6 +139,77 @@ void main() {
         await tester.pumpAndSettle();
         expect(await resultFuture, isNull);
       });
+
+      testWidgets(
+        'falls back to onNativeAppLaunchFailed\'s URL, in the same screen, '
+        'when the native app is installed but cannot actually be opened',
+        (tester) async {
+          fakeLauncher.launchResult = false; // "installed but won't open"
+
+          final authorizeUrl = interceptor.buildAuthorizeUrl(
+            state: 'state-123',
+            isAppInstalled: true,
+          );
+          final fallbackUrl = interceptor.buildAuthorizeUrl(
+            state: 'state-123',
+            isAppInstalled: false,
+          );
+
+          final resultFuture = await pumpFlow(
+            tester,
+            initialUrl: authorizeUrl,
+            onNativeAppLaunchFailed: () => fallbackUrl,
+          );
+
+          final deepLink = Uri(
+            scheme: environment.iosUrlScheme,
+            host: 'authenticate',
+            queryParameters: {
+              'successURL': 'https://stg-id.uaepass.ae/success',
+              'failureURL': 'https://stg-id.uaepass.ae/failure',
+            },
+          );
+          await fakeWebView.lastController!.simulateNavigationAttempt(deepLink);
+          await tester.pump();
+          await tester.pump();
+
+          // Reloaded the fallback (app-to-web) URL into this same screen
+          // instead of finishing/cancelling.
+          expect(fakeWebView.lastController!.loadedUris.last, fallbackUrl);
+
+          await tester.tap(find.byIcon(Icons.close));
+          await tester.pumpAndSettle();
+          expect(await resultFuture, isNull);
+        },
+      );
+
+      testWidgets(
+        'finishes with null when the native app cannot be opened and no '
+        'onNativeAppLaunchFailed fallback was given',
+        (tester) async {
+          fakeLauncher.launchResult = false;
+
+          final authorizeUrl = interceptor.buildAuthorizeUrl(
+            state: 'state-123',
+            isAppInstalled: true,
+          );
+
+          final resultFuture = await pumpFlow(tester, initialUrl: authorizeUrl);
+
+          final deepLink = Uri(
+            scheme: environment.iosUrlScheme,
+            host: 'authenticate',
+            queryParameters: {
+              'successURL': 'https://stg-id.uaepass.ae/success',
+              'failureURL': 'https://stg-id.uaepass.ae/failure',
+            },
+          );
+          await fakeWebView.lastController!.simulateNavigationAttempt(deepLink);
+          await tester.pumpAndSettle();
+
+          expect(await resultFuture, isNull);
+        },
+      );
 
       testWidgets(
         'resumes into the WebView when the app-callback scheme fires',

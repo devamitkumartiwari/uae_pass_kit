@@ -5,6 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:webview_flutter/webview_flutter.dart';
 
+/// The single `app_links` instance every [UaePassWebFlowScreen] shares.
+///
+/// `AppLinks` is documented as a process-wide singleton itself, but its own
+/// README also recommends instantiating it "early in your app to catch the
+/// very first link when the app is in cold state" — a plain top-level
+/// `final` is lazily created on first access and then reused, so the very
+/// first [UaePassWebFlowScreen] pushed keeps that first reference alive for
+/// the rest of the process, rather than each screen instance creating (and
+/// implicitly discarding) its own.
+final AppLinks _sharedAppLinks = AppLinks();
+
 /// A full-screen WebView that drives any UAE Pass flow built on the
 /// documented app-to-app interception mechanics — shared by both the login
 /// flow ([UaePassKit.signIn]) and the e-signature flow
@@ -28,6 +39,7 @@ class UaePassWebFlowScreen extends StatefulWidget {
     required this.isFinalUrl,
     this.title,
     this.appLinkStream,
+    this.onNativeAppLaunchFailed,
   });
 
   /// The URL to load first.
@@ -68,6 +80,16 @@ class UaePassWebFlowScreen extends StatefulWidget {
   /// per use.
   final Stream<Uri>? appLinkStream;
 
+  /// Called when the native UAE Pass app was detected as installed but
+  /// couldn't actually be launched (disabled, frozen, a broken install,
+  /// etc.) — the "installed but cannot be opened" case, which must fall
+  /// back to the app-to-web flow rather than abandon the attempt. If
+  /// provided, its return value is reloaded into this same WebView/screen
+  /// in place of the failed native-app launch; if `null` (or this
+  /// callback isn't provided), this screen falls back to closing itself
+  /// with a `null` result instead.
+  final Uri Function()? onNativeAppLaunchFailed;
+
   @override
   State<UaePassWebFlowScreen> createState() => _UaePassWebFlowScreenState();
 }
@@ -81,7 +103,7 @@ class _UaePassWebFlowScreenState extends State<UaePassWebFlowScreen> {
   @override
   void initState() {
     super.initState();
-    final appLinkStream = widget.appLinkStream ?? AppLinks().uriLinkStream;
+    final appLinkStream = widget.appLinkStream ?? _sharedAppLinks.uriLinkStream;
     _appLinkSubscription = appLinkStream.listen(_onAppLink);
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -131,10 +153,17 @@ class _UaePassWebFlowScreenState extends State<UaePassWebFlowScreen> {
           mode: url_launcher.LaunchMode.externalApplication,
         );
     if (!launched && mounted) {
-      // The native app couldn't be launched even though install detection
-      // said it should be present (e.g. removed between check and launch).
-      // Cancel rather than leave the user on a dead-end screen.
-      _finish(null);
+      // "Installed but cannot be opened" — install detection said the app
+      // should be present, but the actual launch failed (removed between
+      // check and launch, disabled, frozen, etc.). Fall back to app-to-web
+      // in the same screen if the caller gave us a way to, matching the
+      // documented flow-selection rules; only cancel outright if it didn't.
+      final fallbackUrl = widget.onNativeAppLaunchFailed?.call();
+      if (fallbackUrl != null) {
+        unawaited(_controller.loadRequest(fallbackUrl));
+      } else {
+        _finish(null);
+      }
     }
   }
 

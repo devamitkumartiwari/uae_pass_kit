@@ -161,6 +161,13 @@ class UaePassKit {
           isAppCallbackUrl: _interceptor.isAppCallbackUrl,
           extractOriginalUrl: _interceptor.extractOriginalUrl,
           isFinalUrl: _interceptor.isFinalRedirect,
+          // "Installed but cannot be opened" falls back to the app-to-web
+          // flow — matching UAE Pass's documented flow-selection rules —
+          // instead of abandoning the sign-in attempt outright.
+          onNativeAppLaunchFailed: () => _interceptor.buildAuthorizeUrl(
+            state: state,
+            isAppInstalled: false,
+          ),
         ),
       ),
     );

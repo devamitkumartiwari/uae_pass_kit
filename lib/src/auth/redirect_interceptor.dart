@@ -92,10 +92,17 @@ class UaePassRedirectInterceptor {
     return uaePassDeepLink.replace(queryParameters: rewrittenParams);
   }
 
+  /// Builds `config.appCallbackScheme:///resume_authn?url=<originalUrl>` —
+  /// matching UAE Pass's own documented example byte-for-byte (three
+  /// slashes: an empty host, with `/resume_authn` as the path). Getting
+  /// this exact shape wrong is a real, observed cause of the native UAE
+  /// Pass app falling back to opening [originalUrl] in the system browser
+  /// instead of handing control back to this app.
   Uri _appCallbackUrl({required String originalUrl}) {
     return Uri(
       scheme: config.appCallbackScheme,
-      host: 'resume_authn',
+      host: '',
+      path: '/resume_authn',
       queryParameters: {'url': originalUrl},
     );
   }

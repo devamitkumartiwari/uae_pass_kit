@@ -80,6 +80,14 @@ void main() {
         expect(success.queryParameters['url'], 'https://stg-id.uaepass.ae/s');
         expect(failure.scheme, 'testapp');
         expect(failure.queryParameters['url'], 'https://stg-id.uaepass.ae/f');
+
+        // Must match UAE Pass's own documented example byte-for-byte —
+        // three slashes (empty host, "/resume_authn" as the path), not two.
+        // Deviating from this is an observed cause of the native UAE Pass
+        // app falling back to opening the plain https callback in the
+        // system browser instead of handing control back to this app.
+        expect(success.toString(), startsWith('testapp:///resume_authn?url='));
+        expect(failure.toString(), startsWith('testapp:///resume_authn?url='));
       });
 
       test('recognizes this app\'s own callback scheme', () {

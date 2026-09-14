@@ -86,7 +86,7 @@ class _SignInPageState extends State<SignInPage> {
   String? _signingStatus;
   String? _documentShareStatus;
 
-  /// Which of the three deep-linking flows the last sign-in attempt took —
+  /// Which of the two deep-linking flows the last sign-in attempt took —
   /// see the README's "Deep Linking" section for what each one means.
   String? _lastFlowType;
 
@@ -96,6 +96,10 @@ class _SignInPageState extends State<SignInPage> {
 
     _config = UaePassConfig(
       clientId: _sandboxClientId,
+      // Required on Android only — UAE Pass's official native SDK
+      // (vendored here for signIn()) needs client_secret up front just to
+      // obtain an authorization code. See the README's Security section.
+      uaePassClientSecret: _sandboxClientSecret,
       // The OAuth redirect_uri — a plain https:// URL carrying the final
       // code/state. It never needs to be reachable: the plugin's WebView
       // intercepts navigation to it before it would actually load, so no
@@ -152,15 +156,16 @@ class _SignInPageState extends State<SignInPage> {
       _documentShareStatus = null;
       // This is what UaePassKit.signIn() itself checks to pick a flow — see
       // the README's "Deep Linking" section. If the app is installed but
-      // can't actually be opened, the plugin falls back to App-to-Web
-      // automatically mid-flow, so this label reflects the *attempted*
-      // flow, not necessarily which one the user ended up completing.
+      // can't actually be opened (rare), signIn() surfaces that as a
+      // failure/cancellation rather than switching flows, so this label
+      // reflects the *attempted* flow, not necessarily which one the user
+      // ended up completing.
       _lastFlowType = _isAppInstalled == true ? 'App-to-App' : 'App-to-Web';
     });
 
     // Note there's no deep-link listening code anywhere in this file — the
-    // app-to-app callback (and the app-to-web fallback) are handled
-    // entirely inside signIn() itself. See the README's "Deep Linking" →
+    // app-to-app callback is handled entirely inside native code, called
+    // from signIn() itself. See the README's "Deep Linking" →
     // "Callback handling" section for why that's true even if this app
     // also has its own unrelated deep links elsewhere.
     final result = await _uaePassKit.signIn(context);
@@ -346,7 +351,7 @@ class _SignInPageState extends State<SignInPage> {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -426,7 +431,7 @@ class _SignInPageState extends State<SignInPage> {
               const Text('EN', style: TextStyle(fontWeight: FontWeight.bold)),
               Switch(
                 value: _showArabic,
-                activeColor: const Color(0xFFAD904C),
+                activeThumbColor: const Color(0xFFAD904C),
                 onChanged: (v) => setState(() => _showArabic = v),
               ),
               const Text('AR', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -529,7 +534,7 @@ class _SignInPageState extends State<SignInPage> {
   }
 }
 
-/// Shows which of the three deep-linking flows the last sign-in attempt
+/// Shows which of the two deep-linking flows the last sign-in attempt
 /// took — see the README's "Deep Linking" section for what each one means.
 class _FlowTypeChip extends StatelessWidget {
   const _FlowTypeChip({required this.flowType});

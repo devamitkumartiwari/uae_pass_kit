@@ -8,15 +8,14 @@ const String kUaePassDefaultScope = 'urn:uae:digitalid:profile:general';
 /// Immutable configuration for a [UaePassEnvironment] integration.
 ///
 /// There is deliberately no default [redirectUri] or [appCallbackScheme] —
-/// unlike prior community wrappers, which default `redirectUri` to a demo
-/// URL (`https://oauthtest.com/authorization/return`) that integrators could
-/// accidentally leave in a production build. Both must be explicitly
-/// supplied and must match what was registered with UAE Pass during
-/// onboarding.
+/// defaulting either to a demo value would risk an integrator accidentally
+/// leaving it in a production build. Both must be explicitly supplied and
+/// must match what was registered with UAE Pass during onboarding.
 class UaePassConfig {
   /// Creates a UAE Pass configuration.
   const UaePassConfig({
     required this.clientId,
+    this.uaePassClientSecret,
     required this.redirectUri,
     required this.appCallbackScheme,
     required this.environment,
@@ -28,6 +27,21 @@ class UaePassConfig {
 
   /// The client ID issued to you by UAE Pass for [environment].
   final String clientId;
+
+  /// The client secret issued to you by UAE Pass for [environment],
+  /// **required on Android only**.
+  ///
+  /// UAE Pass's official native Android SDK (which this plugin vendors for
+  /// its sign-in flow) requires `client_secret` up front just to obtain an
+  /// authorization code, not only to exchange it for a token — an SDK
+  /// requirement, not a choice made here. This means the secret is
+  /// unavoidably shipped inside the app on Android once this SDK is used,
+  /// regardless of whether you otherwise use a backend `tokenExchanger` to
+  /// keep it server-side for the token-exchange step. iOS's sign-in flow
+  /// does not need it (the authorize page never requires a secret), so it's
+  /// left `null` there. Calling [UaePassKit.signIn] on Android without this
+  /// set throws [UaePassConfigurationException].
+  final String? uaePassClientSecret;
 
   /// The OAuth `redirect_uri` registered with UAE Pass for this app. This is
   /// the URL the plugin's WebView intercepts as the final step of the

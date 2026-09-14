@@ -20,4 +20,56 @@ class MethodChannelUaePassKit extends UaePassKitPlatform {
     );
     return installed ?? false;
   }
+
+  @override
+  Future<void> setUpEnvironment({
+    required String clientId,
+    String? clientSecret,
+    required bool isProduction,
+    required String appCallbackScheme,
+    required String uaePassScheme,
+    required Uri redirectUri,
+    required String scope,
+    required String language,
+  }) {
+    return methodChannel.invokeMethod<void>('setUpEnvironment', {
+      'clientId': clientId,
+      'clientSecret': clientSecret,
+      'isProduction': isProduction,
+      'appCallbackScheme': appCallbackScheme,
+      'uaePassScheme': uaePassScheme,
+      'redirectUri': redirectUri.toString(),
+      'scope': scope,
+      'language': language,
+    });
+  }
+
+  @override
+  Future<String?> nativeSignIn({
+    required String state,
+    required Uri authorizeUrl,
+  }) {
+    return methodChannel.invokeMethod<String>('signIn', {
+      'state': state,
+      'authorizeUrl': authorizeUrl.toString(),
+    });
+  }
+
+  @override
+  Future<String?> openSigningUrl({
+    required String url,
+    required Uri finishUri,
+  }) {
+    return methodChannel.invokeMethod<String>('openSigningUrl', {
+      'url': url,
+      'finishScheme': finishUri.scheme,
+      'finishHost': finishUri.host,
+      'finishPath': finishUri.path,
+    });
+  }
+
+  @override
+  Future<void> nativeSignOut() {
+    return methodChannel.invokeMethod<void>('signOut');
+  }
 }

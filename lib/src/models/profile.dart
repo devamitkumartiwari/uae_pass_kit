@@ -115,10 +115,8 @@ class UaePassHomeAddress {
 /// The authenticated user's UAE Pass profile, as returned by
 /// `GET /idshub/userinfo`.
 ///
-/// Field set mirrors the full union found by decompiling the real official
-/// Android SDK's `ProfileModel` (37 fields) plus `profileType`, documented
-/// separately on docs.uaepass.ae — a superset of both official native
-/// SDKs' own (narrower, and mutually different) model classes. Exactly
+/// Field set covers the full documented union (37 fields plus
+/// `profileType`) across UAE Pass's own native SDKs' model classes. Exactly
 /// which fields are actually populated for a given user depends on the
 /// requested `scope` and the user's profile type, so every field here is
 /// nullable by design; this plugin never assumes a field is present.

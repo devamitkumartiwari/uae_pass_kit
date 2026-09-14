@@ -4,11 +4,10 @@ import '../exceptions.dart';
 ///
 /// This is a sealed type specifically so cancellation and decline are
 /// first-class, exhaustively-handled outcomes rather than exceptions or
-/// null returns — a well-documented issue in prior community wrappers
-/// showed a full host-app crash from an unguarded null callback on cancel,
-/// which this design makes structurally impossible: there is no code path
-/// where a cancelled or declined flow reaches calling code as anything
-/// other than [UaePassAuthCancelled].
+/// null returns — an unguarded null on cancel is a real, easy way to crash
+/// a host app, which this design makes structurally impossible: there is
+/// no code path where a cancelled or declined flow reaches calling code as
+/// anything other than [UaePassAuthCancelled].
 sealed class UaePassAuthResult {
   const UaePassAuthResult();
 }

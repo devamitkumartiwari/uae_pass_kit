@@ -3,6 +3,19 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.0.4
+
+- **Breaking: the browser/native-app hand-off for `signIn()` and `signDocument()` now runs natively**, replacing the pure-Dart `webview_flutter` + `url_launcher` + `app_links` implementation, which proved unreliable at surviving the deep-link return — the flow could get stuck after control bounced out to the UAE Pass app or the system browser and never come back.
+  - **Android** vendors UAE Pass's official native SDK (`ae.sdg.libraryuaepass`, shipped as `android/libs/libraryuaepass.aar`), which owns the app-switch and `onNewIntent` resume internally for `signIn()`. `signDocument()`'s WebView step now runs in a native `android.webkit.WebView` dialog using the same app-switch/deep-link mechanics.
+  - **iOS** drives both flows through an in-app `WKWebView` (never Safari), with the plugin registered as the `UIApplication` delegate (`application(_:open:options:)`) for the app-to-app return — matching UAE Pass's own reference SDK mechanics (fixed `yourscheme://success`/`yourscheme://failure` sentinel URLs; the actual destination is cached in native state, not round-tripped through the returning deep link).
+  - Every plain HTTPS call with no browser/deep-link involved (token exchange, profile fetch, document upload/poll/download, the logout endpoint call) is unchanged, still pure Dart.
+- **Breaking:** `UaePassConfig` gains `uaePassClientSecret` (optional in the constructor, but required to call `signIn()` on Android) — UAE Pass's official native SDK requires `client_secret` up front just to obtain an authorization code, an SDK requirement rather than a choice made here. iOS's sign-in flow does not need it.
+- **Breaking:** removed `UaePassRedirectInterceptor`, `UaePassWebFlowScreen`, and the public constants `kUaePassAcrMobileOnDevice`/`kUaePassAcrPushNotificationFallback` — their responsibilities moved into native code and `UaePassKit` itself.
+- **Behavior change:** dropped the 0.0.3 `onNativeAppLaunchFailed` auto-fallback (installed-but-unopenable silently retrying as App-to-Web in the same screen) — the native SDKs this now runs on don't offer an equivalent hook, so that case now surfaces as a normal sign-in failure/cancellation instead.
+- Removed the now-unused `webview_flutter` and `app_links` dependencies, and the unused `crypto` dependency (state generation uses `dart:math`'s `Random.secure()`, not `package:crypto`).
+- `logout()` now clears cookies via native code (Android's `CookieManager`, iOS's `WKWebsiteDataStore`) instead of `webview_flutter`'s `WebViewCookieManager`.
+- README rewritten throughout to describe the native architecture, including the new `uaePassClientSecret` requirement and the `android:launchMode="singleTask"` manifest guidance the native deep-link resume depends on.
+
 ## 0.0.3
 
 - **Fixed app-to-app deep-linking never returning to the app.** The app-callback URL built for the native UAE Pass app's handoff was shaped `yourapp://resume_authn?url=...` (two slashes, `resume_authn` as the host) instead of UAE Pass's own documented `yourapp:///resume_authn?url=...` (three slashes, empty host, `/resume_authn` as the path). UAE Pass's own integration docs warn this exact mismatch causes the native app to fall back to opening the callback in the system browser instead of routing back into your app. Fixed to match the documented format exactly.

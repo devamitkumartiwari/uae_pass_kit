@@ -3,12 +3,8 @@ import 'dart:math';
 
 /// Generates cryptographically random `state` values for CSRF protection.
 ///
-/// Prior community wrappers default `state` to a hardcoded literal
-/// (`"HnlHOJTkTb66Y5H"` in `setUpEnvironment`, `"123123213"` in
-/// `setUpSandbox`) unless the caller overrides it — meaning most
-/// integrators get effectively no CSRF protection by default. This plugin
-/// generates a fresh random value for every sign-in attempt instead, with
-/// no way to accidentally fall back to a static default.
+/// A fresh random value is generated for every sign-in attempt, with no
+/// static default to accidentally fall back to.
 abstract final class UaePassStateGenerator {
   static final Random _random = Random.secure();
 

@@ -1,16 +1,15 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:uae_pass_kit/src/api/uae_pass_http.dart';
 import 'package:uae_pass_kit/uae_pass_kit.dart';
 import 'package:uae_pass_kit/uae_pass_kit_platform_interface.dart';
-import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
 
 import 'support/fake_uae_pass_kit_platform.dart';
-import 'support/fake_webview_platform.dart';
 import 'support/multipart_mock_client.dart';
 
 class _FakeTokenExchanger implements UaePassTokenExchanger {
@@ -191,10 +190,10 @@ void main() {
       );
     });
 
-    test('logout clears WebView cookies and best-effort hits the logout '
+    test('logout clears native cookies and best-effort hits the logout '
         'endpoint, never throwing on a non-JSON response', () async {
-      final fakeWebView = FakeWebViewPlatform();
-      WebViewPlatform.instance = fakeWebView;
+      final fakePlatform = FakeUaePassKitPlatform();
+      UaePassKitPlatform.instance = fakePlatform;
 
       var logoutCalled = false;
       final mock = MockClient((request) async {
@@ -206,8 +205,117 @@ void main() {
       await client.logout();
 
       expect(logoutCalled, isTrue);
-      expect(fakeWebView.lastController, isNull); // no webview created
+      expect(fakePlatform.signOutCalled, isTrue);
     });
+  });
+
+  group('signIn', () {
+    final androidSecretConfig = UaePassConfig(
+      clientId: 'client-1',
+      uaePassClientSecret: 'android-secret',
+      redirectUri: Uri.parse('https://example.com/cb'),
+      appCallbackScheme: 'testapp',
+      environment: UaePassEnvironment.staging,
+    );
+
+    Future<BuildContext> pumpContext(WidgetTester tester) async {
+      late BuildContext context;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (c) {
+              context = c;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+      return context;
+    }
+
+    testWidgets('runs the flow natively and returns the resulting code', (
+      tester,
+    ) async {
+      final fakePlatform = FakeUaePassKitPlatform()
+        ..nextSignInCode = 'the-code';
+      UaePassKitPlatform.instance = fakePlatform;
+      final client = UaePassKit(
+        config: androidSecretConfig,
+        tokenExchanger: _FakeTokenExchanger(),
+      );
+
+      final result = await client.signIn(await pumpContext(tester));
+
+      expect(result, isA<UaePassAuthSuccess>());
+      final success = result as UaePassAuthSuccess;
+      expect(success.code, 'the-code');
+      expect(fakePlatform.signInStates, [success.state]);
+      expect(fakePlatform.setUpEnvironmentCalls.single['clientId'], 'client-1');
+      expect(
+        fakePlatform.setUpEnvironmentCalls.single['clientSecret'],
+        'android-secret',
+      );
+    });
+
+    testWidgets(
+      'treats a cancellation-flavored native error as UaePassAuthCancelled, '
+      'not a thrown exception',
+      (tester) async {
+        final fakePlatform = FakeUaePassKitPlatform()
+          ..nativeSignInError = PlatformException(
+            code: 'ERROR',
+            message: 'Authentication Process Canceled By User',
+          );
+        UaePassKitPlatform.instance = fakePlatform;
+        final client = UaePassKit(
+          config: androidSecretConfig,
+          tokenExchanger: _FakeTokenExchanger(),
+        );
+
+        final result = await client.signIn(await pumpContext(tester));
+
+        expect(result, isA<UaePassAuthCancelled>());
+      },
+    );
+
+    testWidgets(
+      'surfaces a non-cancellation native error as UaePassAuthFailure',
+      (tester) async {
+        final fakePlatform = FakeUaePassKitPlatform()
+          ..nativeSignInError = PlatformException(
+            code: 'ERROR',
+            message: 'Unable to reach UAE Pass',
+          );
+        UaePassKitPlatform.instance = fakePlatform;
+        final client = UaePassKit(
+          config: androidSecretConfig,
+          tokenExchanger: _FakeTokenExchanger(),
+        );
+
+        final result = await client.signIn(await pumpContext(tester));
+
+        expect(result, isA<UaePassAuthFailure>());
+        expect(
+          (result as UaePassAuthFailure).exception,
+          isA<UaePassServerException>(),
+        );
+      },
+    );
+
+    testWidgets('throws UaePassConfigurationException on Android without '
+        'uaePassClientSecret', (tester) async {
+      UaePassKitPlatform.instance = FakeUaePassKitPlatform();
+      final client = UaePassKit(
+        config: config, // no uaePassClientSecret
+        tokenExchanger: _FakeTokenExchanger(),
+      );
+
+      final context = await pumpContext(tester);
+      expect(
+        () => client.signIn(context),
+        throwsA(isA<UaePassConfigurationException>()),
+      );
+    }, variant: TargetPlatformVariant.only(TargetPlatform.android));
   });
 
   group('requestDocumentShare', () {

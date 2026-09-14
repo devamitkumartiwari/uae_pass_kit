@@ -2,13 +2,16 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'uae_pass_kit_method_channel.dart';
 
-/// The platform-specific interface this plugin's single piece of native
-/// code — checking whether the UAE Pass app is installed — is implemented
-/// against.
+/// The platform-specific interface this plugin's native code is
+/// implemented against.
 ///
-/// Every other capability (the OAuth flow, profile/token/document/signing
-/// API calls) is implemented in pure Dart in `lib/src/`, deliberately not
-/// routed through a platform channel — see the plugin README for why.
+/// Every plain HTTPS API call (token exchange, profile, document
+/// upload/poll/download) is implemented in pure Dart in `lib/src/` — see the
+/// plugin README. Only the parts of the flow that involve a browser/native
+/// UAE Pass app hand-off and the deep-link return are routed through this
+/// platform channel, because that hand-off is what proved unreliable when
+/// implemented in pure Dart (the flow getting stuck after control bounced
+/// out to the UAE Pass app or the system browser).
 abstract class UaePassKitPlatform extends PlatformInterface {
   /// Constructs a UaePassKitPlatform.
   UaePassKitPlatform() : super(token: _token);
@@ -44,5 +47,68 @@ abstract class UaePassKitPlatform extends PlatformInterface {
     throw UnimplementedError(
       'isUaePassAppInstalled() has not been implemented.',
     );
+  }
+
+  /// Pushes this flow's configuration to native code, ahead of
+  /// [nativeSignIn] or [openSigningUrl].
+  ///
+  /// [clientSecret] is only required on Android — UAE Pass's official
+  /// native SDK requires it even just to obtain an authorization code —
+  /// and is ignored on iOS, where the authorize page never needs it.
+  /// [uaePassScheme] is the native UAE Pass app's own custom URL scheme
+  /// (e.g. `uaepassstg`, without `://`) — distinct from
+  /// [appCallbackScheme], which is this app's own scheme.
+  Future<void> setUpEnvironment({
+    required String clientId,
+    String? clientSecret,
+    required bool isProduction,
+    required String appCallbackScheme,
+    required String uaePassScheme,
+    required Uri redirectUri,
+    required String scope,
+    required String language,
+  }) {
+    throw UnimplementedError('setUpEnvironment() has not been implemented.');
+  }
+
+  /// Runs the whole UAE Pass sign-in hand-off natively — presenting the
+  /// login UI, switching to the native UAE Pass app when installed, and
+  /// resuming via the platform's own deep-link mechanism — and returns the
+  /// resulting authorization code.
+  ///
+  /// [authorizeUrl] (pre-built by Dart from [UaePassConfig]/[state]) is
+  /// only used by iOS's native `WKWebView` flow; Android's vendored AAR
+  /// builds its own authorize request from the config already pushed by
+  /// [setUpEnvironment] and ignores it.
+  ///
+  /// Throws a `PlatformException` with code `"ERROR"` on failure or
+  /// cancellation; callers are expected to classify the message the same
+  /// way `UaePassKit` classifies an `error` query parameter.
+  Future<String?> nativeSignIn({
+    required String state,
+    required Uri authorizeUrl,
+  }) {
+    throw UnimplementedError('nativeSignIn() has not been implemented.');
+  }
+
+  /// Opens [url] (a UAE Pass e-signature UI URL) natively, applying the
+  /// same app-switch/deep-link mechanics as [nativeSignIn], until either
+  /// the flow reaches a URL matching [finishUri] (compared by scheme, host
+  /// and path) or the resulting URL carries a `status` query parameter —
+  /// matching UAE Pass's own documented signing-completion signal.
+  ///
+  /// Returns the final URL as a string, or `null` if the user cancelled by
+  /// closing the native UI.
+  Future<String?> openSigningUrl({
+    required String url,
+    required Uri finishUri,
+  }) {
+    throw UnimplementedError('openSigningUrl() has not been implemented.');
+  }
+
+  /// Clears cookies held by native code's own WebView, as part of
+  /// [UaePassKit.logout].
+  Future<void> nativeSignOut() {
+    throw UnimplementedError('nativeSignOut() has not been implemented.');
   }
 }

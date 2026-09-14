@@ -4,12 +4,13 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'uae_pass_kit'
-  s.version          = '0.0.3'
+  s.version          = '0.0.4'
   s.summary          = 'A complete, unofficial Flutter plugin for UAE Pass.'
   s.description      = <<-DESC
 App-to-app sign-in, full profile retrieval, document sharing (proof of
-presentation), PDF e-signature, token refresh and logout for UAE Pass,
-built in pure Dart with no vendored native binaries.
+presentation), PDF e-signature, token refresh and logout for UAE Pass.
+Sign-in and document-signing's browser/native-app hand-off run through an
+in-app WKWebView, native to this pod.
                        DESC
   s.homepage         = 'https://github.com/uae-pass-kit/uae_pass_kit'
   s.license          = { :file => '../LICENSE' }

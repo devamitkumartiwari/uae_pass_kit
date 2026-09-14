@@ -2,16 +2,15 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
-import 'package:webview_flutter/webview_flutter.dart';
 
 import '../uae_pass_kit_platform_interface.dart';
 import 'api/uae_pass_http.dart';
-import 'auth/redirect_interceptor.dart';
 import 'auth/state_generator.dart';
-import 'auth/uae_pass_web_flow_screen.dart';
 import 'config.dart';
+import 'environment.dart';
 import 'exceptions.dart';
 import 'models/auth_result.dart';
 import 'models/document_share.dart';
@@ -19,6 +18,16 @@ import 'models/profile.dart';
 import 'models/signing.dart';
 import 'models/token_response.dart';
 import 'token_exchanger.dart';
+
+/// The acr_values that trigger UAE Pass's native same-device app-to-app
+/// handoff, used when the UAE Pass app is installed.
+const String kUaePassAcrMobileOnDevice =
+    'urn:digitalid:authentication:flow:mobileondevice';
+
+/// The acr_values that trigger UAE Pass's push-notification fallback flow,
+/// used when the UAE Pass app is not installed.
+const String kUaePassAcrPushNotificationFallback =
+    'urn:safelayer:tws:policies:authentication:level:low';
 
 /// The main entry point for this plugin.
 ///
@@ -62,8 +71,7 @@ class UaePassKit {
          signingClientSecret: signingClientSecret,
          config: config,
        ),
-       _http = httpClient ?? UaePassHttpClient(),
-       _interceptor = UaePassRedirectInterceptor(config);
+       _http = httpClient ?? UaePassHttpClient();
 
   static UaePassTokenExchanger _resolveTokenExchanger({
     required UaePassTokenExchanger? tokenExchanger,
@@ -124,7 +132,6 @@ class UaePassKit {
   final UaePassDocumentShareBackend? documentShareBackend;
 
   final UaePassHttpClient _http;
-  final UaePassRedirectInterceptor _interceptor;
 
   /// Returns whether the native UAE Pass app is installed for
   /// [UaePassConfig.environment].
@@ -135,45 +142,111 @@ class UaePassKit {
     );
   }
 
-  /// Starts the UAE Pass app-to-app sign-in flow, pushing a full-screen
-  /// WebView route on [context]'s navigator.
+  /// Starts the UAE Pass app-to-app sign-in flow.
+  ///
+  /// The entire browser/native-app hand-off and deep-link return is
+  /// performed natively (UAE Pass's official SDK on Android, an in-app
+  /// `WKWebView` on iOS) — see [UaePassKitPlatform.nativeSignIn] — rather
+  /// than in Dart, which proved unreliable at surviving that hand-off.
   ///
   /// Returns a [UaePassAuthResult]: [UaePassAuthSuccess] with an
   /// authorization code to exchange via [tokenExchanger], or
   /// [UaePassAuthCancelled] if the user backed out or declined — this
   /// method never throws for a plain user cancellation.
+  ///
+  /// [context] is currently unused (native code owns the UI) but kept for
+  /// API stability and any future UI-adjacent behavior.
   Future<UaePassAuthResult> signIn(BuildContext context) async {
-    final isInstalled = await isUaePassAppInstalled();
+    if (!kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.android &&
+        config.uaePassClientSecret == null) {
+      throw const UaePassConfigurationException(
+        'UaePassConfig.uaePassClientSecret must be set to call signIn() on '
+        "Android — UAE Pass's official native SDK requires it up front, "
+        'even just to obtain an authorization code.',
+      );
+    }
+
     final state = UaePassStateGenerator.generate();
-    final authorizeUrl = _interceptor.buildAuthorizeUrl(
+    await _configureNativeEnvironment();
+
+    // Only iOS's native code needs a pre-built authorize URL (it drives its
+    // own WKWebView) — Android's AAR builds this internally from the config
+    // pushed by _configureNativeEnvironment, and ignores this argument.
+    final isInstalled = await isUaePassAppInstalled();
+    final authorizeUrl = _buildAuthorizeUrl(
       state: state,
       isAppInstalled: isInstalled,
     );
 
-    if (!context.mounted) return const UaePassAuthCancelled();
-    final resultUri = await Navigator.of(context).push<Uri?>(
-      MaterialPageRoute<Uri?>(
-        fullscreenDialog: true,
-        builder: (_) => UaePassWebFlowScreen(
-          initialUrl: authorizeUrl,
-          isNativeAppLaunchUrl: _interceptor.isNativeAppLaunchUrl,
-          rewriteForNativeAppHandoff: _interceptor.rewriteForNativeAppHandoff,
-          isAppCallbackUrl: _interceptor.isAppCallbackUrl,
-          extractOriginalUrl: _interceptor.extractOriginalUrl,
-          isFinalUrl: _interceptor.isFinalRedirect,
-          // "Installed but cannot be opened" falls back to the app-to-web
-          // flow — matching UAE Pass's documented flow-selection rules —
-          // instead of abandoning the sign-in attempt outright.
-          onNativeAppLaunchFailed: () => _interceptor.buildAuthorizeUrl(
-            state: state,
-            isAppInstalled: false,
-          ),
-        ),
+    final String? code;
+    try {
+      code = await UaePassKitPlatform.instance.nativeSignIn(
+        state: state,
+        authorizeUrl: authorizeUrl,
+      );
+    } on PlatformException catch (e) {
+      return _interpretNativeAuthFailure(e);
+    }
+
+    if (code == null || code.isEmpty) return const UaePassAuthCancelled();
+    return UaePassAuthSuccess(code: code, state: state);
+  }
+
+  /// Builds the `/idshub/authorize` URL — used by iOS's native `WKWebView`
+  /// flow only (Android's vendored AAR builds its own from the config
+  /// pushed by [_configureNativeEnvironment]).
+  Uri _buildAuthorizeUrl({
+    required String state,
+    required bool isAppInstalled,
+  }) {
+    return config.environment.endpoints.authorize.replace(
+      queryParameters: {
+        'response_type': 'code',
+        'client_id': config.clientId,
+        'redirect_uri': config.redirectUri.toString(),
+        'scope': config.scope,
+        'state': state,
+        'acr_values': isAppInstalled
+            ? kUaePassAcrMobileOnDevice
+            : kUaePassAcrPushNotificationFallback,
+        'ui_locales': config.locale.wireValue,
+        if (config.useFaceVerification) 'verificationType': 'face',
+      },
+    );
+  }
+
+  Future<void> _configureNativeEnvironment() {
+    return UaePassKitPlatform.instance.setUpEnvironment(
+      clientId: config.clientId,
+      clientSecret: config.uaePassClientSecret,
+      isProduction: config.environment == UaePassEnvironment.production,
+      appCallbackScheme: config.appCallbackScheme,
+      uaePassScheme: config.environment.iosUrlScheme,
+      redirectUri: config.redirectUri,
+      scope: config.scope,
+      language: config.locale.wireValue,
+    );
+  }
+
+  /// Classifies a native sign-in failure the same way prior Dart-side
+  /// `UaePassRedirectInterceptor` parsing did: a plain user cancellation is
+  /// [UaePassAuthCancelled], never an exception.
+  UaePassAuthResult _interpretNativeAuthFailure(PlatformException e) {
+    final message = e.message ?? '';
+    if (_looksLikeCancellation(message)) return const UaePassAuthCancelled();
+    return UaePassAuthFailure(
+      UaePassServerException(
+        message.isEmpty ? 'UAE Pass sign-in failed' : message,
+        statusCode: 400,
+        errorCode: e.code,
       ),
     );
+  }
 
-    if (resultUri == null) return const UaePassAuthCancelled();
-    return _interceptor.parseFinalRedirect(resultUri, expectedState: state);
+  bool _looksLikeCancellation(String message) {
+    final lower = message.toLowerCase();
+    return lower.contains('cancel') || lower.contains('access_denied');
   }
 
   /// Exchanges an authorization [code] (from [UaePassAuthSuccess]) for an
@@ -214,20 +287,18 @@ class UaePassKit {
     );
   }
 
-  /// Best-effort UAE Pass sign-out: clears every cookie stored by this
-  /// plugin's WebView (terminating the local SSO session) and notifies
+  /// Best-effort UAE Pass sign-out: clears every cookie stored by native
+  /// code's own WebView (terminating the local SSO session) and notifies
   /// UAE Pass's `/idshub/logout` endpoint.
   ///
-  /// Note this is a real improvement over prior community wrappers' plain
-  /// `signOut()`, which only clears local state and never calls
-  /// `/idshub/logout` at all — but true single-logout on UAE Pass's side
-  /// is only guaranteed if [logoutUrl] is actually navigated to inside the
-  /// same browser/WebView session that authenticated (its session cookie
-  /// lives there, not in this plugin's plain HTTP client). If your app
-  /// needs a stronger guarantee, navigate the user to [logoutUrl] directly
-  /// instead of relying on this method alone.
+  /// True single-logout on UAE Pass's side is only guaranteed if
+  /// [logoutUrl] is actually navigated to inside the same browser/WebView
+  /// session that authenticated (its session cookie lives there, not in
+  /// this plugin's plain HTTP client). If your app needs a stronger
+  /// guarantee, navigate the user to [logoutUrl] directly instead of
+  /// relying on this method alone.
   Future<void> logout({Uri? postLogoutRedirectUri}) async {
-    await WebViewCookieManager().clearCookies();
+    await UaePassKitPlatform.instance.nativeSignOut();
     try {
       await _http.getJson(
         logoutUrl(postLogoutRedirectUri: postLogoutRedirectUri),
@@ -297,12 +368,17 @@ class UaePassKit {
     }
   }
 
-  /// Starts UAE Pass's PDF e-signature flow for [request], pushing the
-  /// same full-screen WebView flow used by [signIn] once UAE Pass returns
-  /// a signing URL.
+  /// Starts UAE Pass's PDF e-signature flow for [request]: uploads the
+  /// document via [createSigningProcess] (plain HTTPS, unchanged), then —
+  /// once UAE Pass returns a signing URL — presents it natively and applies
+  /// the same app-switch/deep-link mechanics as [signIn] until a terminal
+  /// status is reached.
   ///
   /// Requires [signingTokenExchanger]. Returns
   /// [UaePassSigningOutcome.cancelled] if the user backs out.
+  ///
+  /// [context] is currently unused (native code owns the UI) but kept for
+  /// API stability and any future UI-adjacent behavior.
   Future<UaePassSigningOutcome> signDocument(
     BuildContext context,
     UaePassSigningRequest request,
@@ -327,28 +403,21 @@ class UaePassKit {
       return UaePassSigningOutcome.finished;
     }
 
-    if (!context.mounted) return UaePassSigningOutcome.cancelled;
-    final resultUri = await Navigator.of(context).push<Uri?>(
-      MaterialPageRoute<Uri?>(
-        fullscreenDialog: true,
-        builder: (_) => UaePassWebFlowScreen(
-          title: 'UAE PASS SIGNING',
-          initialUrl: signingUrl,
-          isNativeAppLaunchUrl: _interceptor.isNativeAppLaunchUrl,
-          rewriteForNativeAppHandoff: _interceptor.rewriteForNativeAppHandoff,
-          isAppCallbackUrl: _interceptor.isAppCallbackUrl,
-          extractOriginalUrl: _interceptor.extractOriginalUrl,
-          isFinalUrl: (uri) =>
-              uri.scheme == request.finishCallbackUrl.scheme &&
-              uri.host == request.finishCallbackUrl.host &&
-              uri.path == request.finishCallbackUrl.path,
-        ),
-      ),
-    );
+    await _configureNativeEnvironment();
+    final String? resultUrl;
+    try {
+      resultUrl = await UaePassKitPlatform.instance.openSigningUrl(
+        url: signingUrl.toString(),
+        finishUri: request.finishCallbackUrl,
+      );
+    } on PlatformException {
+      return UaePassSigningOutcome.cancelled;
+    }
 
-    if (resultUri == null) return UaePassSigningOutcome.cancelled;
+    if (resultUrl == null) return UaePassSigningOutcome.cancelled;
+    final resultUri = Uri.tryParse(resultUrl);
     return UaePassSigningOutcome.fromStatusParam(
-      resultUri.queryParameters['status'],
+      resultUri?.queryParameters['status'],
     );
   }
 

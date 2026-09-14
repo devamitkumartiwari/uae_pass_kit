@@ -9,8 +9,7 @@ const String kUaePassSignProcessType =
 const String kUaePassSignPolicyId =
     'urn:safelayer:eidas:policies:sign:document:pdf';
 
-/// The pixel rectangle a visible signature field occupies on a page,
-/// mirroring the decompiled `RectangleBean`.
+/// The pixel rectangle a visible signature field occupies on a page.
 class UaePassSignatureRectangle {
   /// Creates a signature rectangle in PDF page pixel coordinates.
   const UaePassSignatureRectangle({
@@ -42,7 +41,7 @@ class UaePassSignatureRectangle {
 }
 
 /// A single visible detail line (e.g. signer name, date) shown inside a
-/// signature's visual appearance, mirroring the decompiled `DetailsBean`.
+/// signature's visual appearance.
 class UaePassSignatureAppearanceDetail {
   /// Creates an appearance detail line.
   const UaePassSignatureAppearanceDetail({
@@ -60,8 +59,7 @@ class UaePassSignatureAppearanceDetail {
   Map<String, dynamic> toJson() => {'type': type, 'title': title};
 }
 
-/// A single named signature field placed on a document, mirroring the
-/// decompiled `SignatureFieldBean` → `LocationBean`/`AppearanceBean` tree.
+/// A single named signature field placed on a document.
 class UaePassSignatureField {
   /// Creates a signature field.
   const UaePassSignatureField({
@@ -106,8 +104,7 @@ class UaePassSignatureField {
   };
 }
 
-/// A single signer participating in a signing process, mirroring the
-/// decompiled `SignerBean`.
+/// A single signer participating in a signing process.
 class UaePassSigner {
   /// Creates a signer entry.
   const UaePassSigner({
@@ -193,8 +190,7 @@ class UaePassSigningRequest {
   };
 }
 
-/// A pending task UAE Pass expects the signer to complete, mirroring the
-/// decompiled `Pending` model.
+/// A pending task UAE Pass expects the signer to complete.
 class UaePassSigningPendingTask {
   /// Creates a pending signing task.
   const UaePassSigningPendingTask({
@@ -223,8 +219,7 @@ class UaePassSigningPendingTask {
   final Uri url;
 }
 
-/// A document attached to a signing process, mirroring the decompiled
-/// `Document` model.
+/// A document attached to a signing process.
 class UaePassSigningDocument {
   /// Creates a signing-process document reference.
   const UaePassSigningDocument({required this.url});
@@ -240,8 +235,7 @@ class UaePassSigningDocument {
   final Uri url;
 }
 
-/// The response returned by `POST /esignsp/v2/signer_processes`, mirroring
-/// the decompiled `DocSignatureProcessModel`.
+/// The response returned by `POST /esignsp/v2/signer_processes`.
 class UaePassSigningProcess {
   /// Creates a signing-process result.
   const UaePassSigningProcess({

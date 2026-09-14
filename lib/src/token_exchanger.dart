@@ -44,14 +44,12 @@ abstract class UaePassTokenExchanger {
 ///
 /// **Understand the tradeoff before using this in production.** Embedding
 /// `client_secret` in a shipped app or web bundle exposes it to anyone who
-/// inspects the binary or network traffic — exactly the flaw found in
-/// prior community wrappers (iOS embeds it on-device; the web
-/// implementation sends it from browser JavaScript). If that's an
-/// acceptable tradeoff for your integration (e.g. an internal app, or
-/// while you haven't built a backend yet), this class is a fully
-/// functional way to run against production. If not, implement
-/// [UaePassTokenExchanger] against your own backend instead, so
-/// `client_secret` never ships in the app at all.
+/// inspects the binary or network traffic. If that's an acceptable
+/// tradeoff for your integration (e.g. an internal app, or while you
+/// haven't built a backend yet), this class is a fully functional way to
+/// run against production. If not, implement [UaePassTokenExchanger]
+/// against your own backend instead, so `client_secret` never ships in the
+/// app at all.
 class UaePassDirectTokenExchanger implements UaePassTokenExchanger {
   /// Creates a direct token exchanger for [environment] using [clientId]
   /// and [clientSecret].

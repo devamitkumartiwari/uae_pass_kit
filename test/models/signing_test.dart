@@ -6,7 +6,7 @@ import 'package:uae_pass_kit/uae_pass_kit.dart';
 void main() {
   group('UaePassSigningRequest.toProcessJson', () {
     test('serializes the signer/field/location/appearance tree matching '
-        'the decompiled DocumentSigningRequestParams shape', () {
+        "UAE Pass's documented signer_processes request shape", () {
       final request = UaePassSigningRequest(
         documentBytes: Uint8List.fromList([1, 2, 3]),
         documentFileName: 'agreement.pdf',
@@ -92,8 +92,8 @@ void main() {
   });
 
   group('UaePassSigningProcess.fromJson', () {
-    test('parses pending tasks and documents from the decompiled '
-        'DocSignatureProcessModel shape', () {
+    test('parses pending tasks and documents from the documented '
+        'signer_processes response shape', () {
       final process = UaePassSigningProcess.fromJson({
         'id': 'process-1',
         'Tasks': {

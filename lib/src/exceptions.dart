@@ -1,9 +1,8 @@
 /// Base class for every exception this plugin throws.
 ///
-/// Unlike prior community wrappers, which rethrow `PlatformException`
-/// messages as raw strings, every failure mode here is a distinct,
-/// catchable type so callers can branch on what actually went wrong
-/// instead of pattern matching on string content.
+/// Every failure mode is a distinct, catchable type so callers can branch
+/// on what actually went wrong instead of pattern matching on string
+/// content.
 sealed class UaePassException implements Exception {
   /// Creates a UAE Pass exception with a human-readable [message].
   const UaePassException(this.message);

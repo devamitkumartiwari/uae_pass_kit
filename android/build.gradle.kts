@@ -46,22 +46,6 @@ android {
     }
 }
 
-dependencies {
-    // The official UAE Pass Android SDK (ae.sdg.libraryuaepass) is only
-    // distributed as a raw .aar, vendored here under libs/ — there is no
-    // Maven Central/Google artifact for it. Referenced as a direct file
-    // dependency (rather than a `flatDir` repository) since a `flatDir`
-    // declared in this module's own `repositories {}` isn't visible to a
-    // consuming app's dependency resolution once this module is pulled in
-    // as an included build by Flutter's plugin loader.
-    implementation(files("libs/libraryuaepass.aar"))
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.retrofit2:converter-scalars:2.9.0")
-    implementation("com.google.code.gson:gson:2.8.6")
-    implementation("com.loopj.android:android-async-http:1.4.9")
-}
-
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17

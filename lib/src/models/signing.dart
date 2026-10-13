@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 /// The UAE Pass process type for a standard PDF advanced/qualified
-/// signature, as found in both official native SDKs.
+/// signature.
 const String kUaePassSignProcessType =
     'urn:safelayer:eidas:processes:document:sign:esigp';
 

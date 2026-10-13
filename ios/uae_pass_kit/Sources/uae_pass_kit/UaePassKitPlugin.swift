@@ -11,17 +11,16 @@ import UIKit
 /// exchange, profile fetch, document upload/poll/download) stays in Dart —
 /// see the plugin README.
 ///
-/// Unlike Android (which vendors UAE Pass's official native SDK), there is
-/// no equivalent iOS binary, so sign-in and document-signing are both
-/// driven by one in-app `WKWebView` (never Safari), following the exact
-/// mechanics UAE Pass's own reference SDKs implement: intercept navigation
+/// As on Android, sign-in and document-signing are both driven by one
+/// in-app `WKWebView` (never Safari), following UAE Pass's documented
+/// app-to-app mechanics: intercept navigation
 /// to the configured redirect/finish URL, and intercept navigation to UAE
 /// Pass's own custom scheme to hand off to the native app, rewriting its
 /// `successurl`/`failureurl` to this app's fixed `appCallbackScheme://success`
 /// / `appCallbackScheme://failure` sentinel URLs before launching it — the
 /// actual destination is cached locally (see `UaePassWebFlowViewController`)
 /// rather than round-tripped through the returning deep link itself.
-public class UaePassKitPlugin: NSObject, FlutterPlugin {
+public class UaePassKitPlugin: NSObject, FlutterPlugin, FlutterSceneLifeCycleDelegate {
   private var appCallbackScheme: String?
   private var uaePassScheme: String?
 
@@ -35,7 +34,11 @@ public class UaePassKitPlugin: NSObject, FlutterPlugin {
     let channel = FlutterMethodChannel(name: "uae_pass_kit", binaryMessenger: registrar.messenger())
     let instance = UaePassKitPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
+    // Apps on the UIScene life cycle (the default for new Flutter apps, and
+    // required by iOS 27) deliver deep links to the scene delegate; older
+    // app-delegate based apps still deliver them to the application delegate.
     registrar.addApplicationDelegate(instance)
+    registrar.addSceneDelegate(instance)
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -134,6 +137,10 @@ public class UaePassKitPlugin: NSObject, FlutterPlugin {
           result(FlutterError(code: "ERROR", message: description, details: nil))
           return
         }
+        if finishedUrl.queryValue(for: "state") != authorizeUrl.queryValue(for: "state") {
+          result(FlutterError(code: "ERROR", message: "UAE Pass returned a mismatched state", details: nil))
+          return
+        }
         result(finishedUrl.queryValue(for: "code"))
       }
     )
@@ -226,19 +233,29 @@ public class UaePassKitPlugin: NSObject, FlutterPlugin {
   /// Catches the return from the native UAE Pass app via this app's own
   /// fixed `appCallbackScheme://success` / `appCallbackScheme://failure`
   /// sentinel URLs, and resumes whichever web flow ([handleSignIn] or
-  /// [handleOpenSigningUrl]) is currently pending — matching UAE Pass's own
-  /// reference SDK mechanics exactly.
+  /// [handleOpenSigningUrl]) is currently pending.
   public func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-    guard let scheme = appCallbackScheme, let flow = pendingWebFlow else { return false }
-    let urlString = url.absoluteString
-    if urlString.contains("\(scheme)://success") {
+    return handleOpenURL(url)
+  }
+
+  /// The UIScene counterpart of [application(_:open:options:)].
+  public func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) -> Bool {
+    return URLContexts.contains { handleOpenURL($0.url) }
+  }
+
+  private func handleOpenURL(_ url: URL) -> Bool {
+    guard let scheme = appCallbackScheme, let flow = pendingWebFlow,
+          url.scheme?.caseInsensitiveCompare(scheme) == .orderedSame
+    else { return false }
+    switch url.host?.lowercased() {
+    case "success":
       flow.forceReload()
       return true
-    }
-    if urlString.contains("\(scheme)://failure") {
+    case "failure":
       flow.forceStop()
       return true
+    default:
+      return false
     }
-    return false
   }
 }

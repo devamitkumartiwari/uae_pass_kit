@@ -3,7 +3,7 @@
 /// Covers app-to-app sign-in, full profile retrieval, document sharing
 /// (proof of presentation), PDF e-signature, token refresh and logout.
 /// Sign-in and document-signing's browser/native-app hand-off run natively
-/// (UAE Pass's official SDK on Android, an in-app WKWebView on iOS); every
+/// (an in-app WebView on Android, an in-app WKWebView on iOS); every
 /// other capability is plain Dart HTTPS calls. See the package README for
 /// setup and usage.
 library;

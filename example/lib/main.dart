@@ -96,10 +96,6 @@ class _SignInPageState extends State<SignInPage> {
 
     _config = UaePassConfig(
       clientId: _sandboxClientId,
-      // Required on Android only — UAE Pass's official native SDK
-      // (vendored here for signIn()) needs client_secret up front just to
-      // obtain an authorization code. See the README's Security section.
-      uaePassClientSecret: _sandboxClientSecret,
       // The OAuth redirect_uri — a plain https:// URL carrying the final
       // code/state. It never needs to be reachable: the plugin's WebView
       // intercepts navigation to it before it would actually load, so no

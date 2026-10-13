@@ -52,9 +52,8 @@ abstract class UaePassKitPlatform extends PlatformInterface {
   /// Pushes this flow's configuration to native code, ahead of
   /// [nativeSignIn] or [openSigningUrl].
   ///
-  /// [clientSecret] is only required on Android — UAE Pass's official
-  /// native SDK requires it even just to obtain an authorization code —
-  /// and is ignored on iOS, where the authorize page never needs it.
+  /// [clientSecret] is no longer used by any platform and is kept only for
+  /// compatibility with existing implementations of this interface.
   /// [uaePassScheme] is the native UAE Pass app's own custom URL scheme
   /// (e.g. `uaepassstg`, without `://`) — distinct from
   /// [appCallbackScheme], which is this app's own scheme.
@@ -76,10 +75,9 @@ abstract class UaePassKitPlatform extends PlatformInterface {
   /// resuming via the platform's own deep-link mechanism — and returns the
   /// resulting authorization code.
   ///
-  /// [authorizeUrl] (pre-built by Dart from [UaePassConfig]/[state]) is
-  /// only used by iOS's native `WKWebView` flow; Android's vendored AAR
-  /// builds its own authorize request from the config already pushed by
-  /// [setUpEnvironment] and ignores it.
+  /// [authorizeUrl] is pre-built by Dart from [UaePassConfig] and [state];
+  /// the native flow starts from it, and rejects a redirect whose `state`
+  /// doesn't match it.
   ///
   /// Throws a `PlatformException` with code `"ERROR"` on failure or
   /// cancellation; callers are expected to classify the message the same

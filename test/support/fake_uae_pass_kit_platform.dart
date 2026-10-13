@@ -30,6 +30,7 @@ class FakeUaePassKitPlatform extends UaePassKitPlatform {
 
   /// The `state` every [nativeSignIn] call was made with, most recent last.
   final List<String> signInStates = [];
+  final List<Uri> signInAuthorizeUrls = [];
 
   /// Whether [nativeSignOut] has been called.
   bool signOutCalled = false;
@@ -71,6 +72,7 @@ class FakeUaePassKitPlatform extends UaePassKitPlatform {
     required Uri authorizeUrl,
   }) async {
     signInStates.add(state);
+    signInAuthorizeUrls.add(authorizeUrl);
     final error = nativeSignInError;
     if (error != null) throw error;
     return nextSignInCode;

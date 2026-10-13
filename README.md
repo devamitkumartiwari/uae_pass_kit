@@ -2,19 +2,17 @@
 
 A complete, unofficial Flutter plugin for [UAE Pass](https://uaepass.ae) — the UAE's national digital identity SSO service.
 
-App-to-app sign-in, full profile retrieval, document sharing (proof of presentation), PDF e-signature, token refresh and logout. Sign-in and document-signing's browser/native-app hand-off run **natively** — UAE Pass's official vendored SDK on Android, an in-app `WKWebView` on iOS — because that hand-off proved unreliable when driven from Dart (`webview_flutter` + `url_launcher` + `app_links`): control would bounce out to the UAE Pass app or system browser and never come back. Every other capability (token exchange, profile fetch, document upload/poll/download) is plain Dart HTTPS calls. Android and iOS are supported (see [Platform support](#platform-support) for why web isn't).
+App-to-app sign-in, full profile retrieval, document sharing (proof of presentation), PDF e-signature, token refresh and logout. Sign-in and document-signing's browser/native-app hand-off run **natively** — an in-app `WebView` on Android, an in-app `WKWebView` on iOS — because that hand-off proved unreliable when driven from Dart (`webview_flutter` + `url_launcher` + `app_links`): control would bounce out to the UAE Pass app or system browser and never come back. Every other capability (token exchange, profile fetch, document upload/poll/download) is plain Dart HTTPS calls. Android and iOS are supported (see [Platform support](#platform-support) for why web isn't).
 
-> **Unofficial.** Not endorsed by UAE Pass, Smart Dubai Government, or the UAE government. Built from `docs.uaepass.ae`'s public integration guides. Android vendors UAE Pass's own official native SDK directly (see [Why native](#why-native-for-the-browserapp-switch-hand-off)); iOS has no equivalent official binary, so its flow is a from-scratch implementation of the same publicly documented protocol.
+> **Unofficial.** Not endorsed by UAE Pass, Smart Dubai Government, or the UAE government. Built from `docs.uaepass.ae`'s public integration guides. Both platforms implement the publicly documented app-to-app protocol (see [Why native](#why-native-for-the-browserapp-switch-hand-off)).
 
-**Contents:** [Quick start](#quick-start) · [Why native](#why-native-for-the-browserapp-switch-hand-off) · [Features](#features) · [Environments](#environments) · [Security](#security-where-client_secret-belongs) · [Deep Linking](#deep-linking) · [Platform support](#platform-support) · [Development](#development)
+**Contents:** [Quick start](#quick-start) · [Why native](#why-native-for-the-browserapp-switch-hand-off) · [Features](#features) · [Environments](#environments) · [Security](#security-where-client_secret-belongs) · [Deep Linking](#deep-linking) · [Platform support](#platform-support) · [Upgrading from 0.0.4](#upgrading-from-004) · [Development](#development)
 
 ## Quick start
 
 ```dart
 final config = UaePassConfig(
   clientId: 'your-client-id',
-  // Required on Android only — see "Security: where client_secret belongs".
-  uaePassClientSecret: 'your-client-secret',
   redirectUri: Uri.parse('https://yourapp.com/uaepass/callback'),
   appCallbackScheme: 'yourappscheme',
   environment: UaePassEnvironment.staging, // or .production
@@ -48,8 +46,8 @@ An earlier version of this plugin implemented the entire flow in pure Dart (`web
 
 So the parts of the flow that involve that hand-off now run natively, where the platform's own deep-link delivery mechanism is handled directly, with no Dart-side listener in between:
 
-- **Android** vendors UAE Pass's official native SDK (the `ae.sdg.libraryuaepass` AAR — the same one distributed by other UAE Pass plugins), which owns the whole app-switch and `onNewIntent` resume internally.
-- **iOS** has no equivalent official binary, so sign-in and document-signing are driven by an in-app `WKWebView` (never Safari) with the plugin itself registered as the `UIApplication` delegate for the app-to-app return — the same technique UAE Pass's own reference integrations use.
+- **Android** drives sign-in and document-signing through an in-app `WebView` dialog (never Chrome), with the plugin receiving the app-to-app return through `onNewIntent`.
+- **iOS** drives both flows through an in-app `WKWebView` (never Safari), with the plugin registered as both the `UIApplication` and the `UIScene` delegate for the app-to-app return — so it works whether or not your app has adopted the UIScene life cycle (required from iOS 27).
 
 Every capability that's a plain HTTPS call with no browser/deep-link involved — token exchange, profile fetch, document upload/poll/download, logout's endpoint call — stays in pure Dart, unchanged by any of this.
 
@@ -57,7 +55,7 @@ Every capability that's a plain HTTPS call with no browser/deep-link involved �
 
 - **Sign-in** — the documented app-to-app hand-off, run natively, with graceful, typed handling of cancellation/decline (never a crash).
 - **Token exchange & refresh** — pluggable, so `client_secret` never has to ship in your app.
-- **Full profile retrieval** — the complete field set found across both official native SDKs (EN/AR name pairs, Emirates ID, home address, etc.), not a partial hand-picked subset.
+- **Full profile retrieval** — the complete profile field set (EN/AR name pairs, Emirates ID, home address, etc.), not a partial hand-picked subset.
 - **Logout** — clears local session state and notifies UAE Pass's logout endpoint.
 - **Document sharing (proof of presentation)** — a cancelable polling stream, delegating the HMAC-signed backend calls to your own server.
 - **PDF e-signature** — the `esignsp/v2` flow, including multi-signer field placement.
@@ -82,7 +80,7 @@ UAE Pass's token endpoint is a **confidential-client** endpoint (HTTP Basic `cli
 
 This plugin never bakes that assumption in — `UaePassTokenExchanger` and `UaePassSigningTokenExchanger` are interfaces, so the exchange step is pluggable. The recommended path for production is to implement the interface against your own backend:
 
-> **Android-only exception:** UAE Pass's official native SDK (vendored here for `signIn()`) requires `client_secret` up front just to obtain an authorization code — not only to exchange it for a token — an SDK requirement, not a choice made here. This means `UaePassConfig.uaePassClientSecret` is unavoidably shipped inside your Android app binary once you call `signIn()`, regardless of whether you otherwise use a backend `tokenExchanger` to keep the secret server-side for the token-exchange step. iOS's sign-in flow does not need it. If this trade-off is unacceptable for your threat model, raise it with UAE Pass directly — it's inherent to their SDK, not something this plugin can work around while still fixing the deep-link reliability issue vendoring it solves.
+> Sign-in itself never needs `client_secret` on any platform — only the token-exchange step does, and that step is pluggable as described here.
 
 ```dart
 class BackendTokenExchanger implements UaePassTokenExchanger {
@@ -132,13 +130,13 @@ It's easy to conflate these — they look similar but do completely different jo
 
 The one you're most likely to misconfigure is the second row. Get it wrong and you'll see exactly the symptom this plugin had to be fixed for: after finishing in the native UAE Pass app, a Safari/Chrome page opens showing your `code`/`state` in the address bar, instead of control returning to your app. If you ever see that, it means the app-to-app handoff's return leg isn't reaching your app — check the platform config below first.
 
-**Worked example, with real-shaped values.** Say your app registers the scheme `myapp`, targets `staging`, and your `redirectUri` is `https://myapp.com/callback`. Here's every URL that actually crosses the wire, in order (all inside native code — Android's vendored SDK, or iOS's `WKWebView`):
+**Worked example, with real-shaped values.** Say your app registers the scheme `myapp`, targets `staging`, and your `redirectUri` is `https://myapp.com/callback`. Here's every URL that actually crosses the wire, in order (all inside native code — Android's `WebView` dialog, or iOS's `WKWebView`):
 
 1. Native code loads the authorize URL: `https://stg-id.uaepass.ae/idshub/authorize?...&redirect_uri=https%3A%2F%2Fmyapp.com%2Fcallback&...`
 2. UAE Pass's hosted page tries to navigate to its own app: `uaepassstg://authenticate?successurl=https%3A%2F%2Fstg-id.uaepass.ae%2F...&failureurl=...`
 3. Native code intercepts step 2, **caches the original `successurl`/`failureurl` locally**, rewrites them to this app's own fixed sentinel URLs, and launches: `uaepassstg://authenticate?successurl=myapp%3A%2F%2Fsuccess&failureurl=myapp%3A%2F%2Ffailure` — the destination from step 2 travels in local native state, not through the OS.
 4. The user finishes in the native app. It opens the sentinel your app registered in step 3 — just `myapp://success` (or `myapp://failure`), carrying no payload — this is the one your Android intent-filter / iOS `CFBundleURLTypes` below must actually catch.
-5. Your app receives step 4 as a deep link — Android via `onNewIntent`, iOS via `application(_:open:options:)`, both handled entirely inside this plugin's native code — which reloads the **cached** `successurl` from step 3 to resume the flow (or stops and cancels, for `failureurl`).
+5. Your app receives step 4 as a deep link — Android via `onNewIntent`, iOS via `scene(_:openURLContexts:)` (or `application(_:open:options:)` for apps without UIScene), both handled entirely inside this plugin's native code — which reloads the **cached** `successurl` from step 3 to resume the flow (or stops and cancels, for `failureurl`).
 6. That resumed flow eventually redirects to `https://myapp.com/callback?code=...&state=...` — your `redirectUri` — which native code catches before it ever loads, and `signIn()` returns.
 
 You never write code for steps 2–6 — they all happen inside native code owned by this plugin. The only thing *you* provide is the scheme in step 3/4 (`appCallbackScheme`) and its platform registration (below), and the URL in step 1/6 (`redirectUri`).
@@ -153,7 +151,7 @@ You never write code for steps 2–6 — they all happen inside native code owne
 Your app  →  UAE Pass app  →  user authenticates  →  UAE Pass app  →  your app (deep link)
 ```
 
-Native code loads UAE Pass's hosted login page, which tries to navigate to `uaepass://`/`uaepassstg://`. Native code intercepts that, caches the success/failure URLs inside it locally, rewrites them to your app-callback scheme's fixed `yourappscheme://success`/`yourappscheme://failure` sentinels, and launches the native app. When the user finishes there, the native app opens one of those sentinels, which this plugin's native code receives directly (Android's `onNewIntent`, iOS's `application(_:open:options:)`) and uses to reload the cached URL and resume the flow, to complete it.
+Native code loads UAE Pass's hosted login page, which tries to navigate to `uaepass://`/`uaepassstg://`. Native code intercepts that, caches the success/failure URLs inside it locally, rewrites them to your app-callback scheme's fixed `yourappscheme://success`/`yourappscheme://failure` sentinels, and launches the native app. When the user finishes there, the native app opens one of those sentinels, which this plugin's native code receives directly (Android's `onNewIntent`, iOS's `scene(_:openURLContexts:)` or `application(_:open:options:)`) and uses to reload the cached URL and resume the flow, to complete it.
 
 **2. App-to-Web** — the UAE Pass app is not installed.
 
@@ -169,17 +167,17 @@ No app-switching, no custom scheme involved at all. The user identifies themselv
 2. The user enters their UAE Pass identifier on that same hosted page and confirms via a push notification on another device.
 3. UAE Pass redirects straight to `https://myapp.com/callback?code=...&state=...` — caught in-app exactly like step 6 of the App-to-App example, and `signIn()` returns. Steps 2–5 of that example (any custom scheme at all) never happen.
 
-**Installed but unopenable** — the app is detected as installed, but the actual launch attempt fails (disabled, frozen by an MDM policy, a broken install, etc.). This is rare, and neither UAE Pass's own reference SDKs nor this plugin auto-retry as App-to-Web in that case — `signIn()` surfaces it as a failure/cancellation instead of silently switching flows. If you need to handle this specifically, catch it via [`UaePassAuthFailure`](#quick-start) and prompt the user to retry (by which point the app may no longer report as installed, correctly routing them through App-to-Web instead).
+**Installed but unopenable** — the app is detected as installed, but the actual launch attempt fails (disabled, frozen by an MDM policy, a broken install, etc.). This is rare, and this plugin doesn't auto-retry as App-to-Web in that case — `signIn()` surfaces it as a failure/cancellation instead of silently switching flows. If you need to handle this specifically, catch it via [`UaePassAuthFailure`](#quick-start) and prompt the user to retry (by which point the app may no longer report as installed, correctly routing them through App-to-Web instead).
 
 In **both flows**, control returns to (or never leaves) the exact same screen that called `signIn()` — there's no separate "resume" step your app needs to implement.
 
 ### Callback handling — what code you actually have to write
 
-None, for the callback itself. This plugin's native code receives the deep link directly from the OS (Android's `onNewIntent` via `PluginRegistry.NewIntentListener`, iOS's `application(_:open:options:)` via `registrar.addApplicationDelegate`) and resumes the flow with it — there's no Dart-side listener code for you to write anywhere in your app for UAE Pass's flow to work. All you provide is the *platform registration* (the intent-filter/`CFBundleURLTypes` below) so the OS routes the deep link to your app in the first place — what happens once it arrives is entirely internal, and entirely native.
+None, for the callback itself. This plugin's native code receives the deep link directly from the OS (Android's `onNewIntent` via `PluginRegistry.NewIntentListener`, iOS's `scene(_:openURLContexts:)` via `registrar.addSceneDelegate`, or `application(_:open:options:)` via `registrar.addApplicationDelegate` for apps without UIScene) and resumes the flow with it — there's no Dart-side listener code for you to write anywhere in your app for UAE Pass's flow to work. All you provide is the *platform registration* (the intent-filter/`CFBundleURLTypes` below) so the OS routes the deep link to your app in the first place — what happens once it arrives is entirely internal, and entirely native.
 
 Two things worth knowing if your app *also* has its own deep-link handling for other purposes (e.g. marketing links, other SSO providers):
 
-- **They coexist safely.** Android's `addOnNewIntentListener` and iOS's `addApplicationDelegate` both support multiple registered listeners, so this plugin's internal handler and any handler you attach elsewhere in your app (via `app_links`, `uni_links`, or your own `AppDelegate`/`MainActivity` code) both receive every incoming link independently.
+- **They coexist safely.** Android's `addOnNewIntentListener` and iOS's `addApplicationDelegate`/`addSceneDelegate` all support multiple registered listeners, so this plugin's internal handler and any handler you attach elsewhere in your app (via `app_links`, `uni_links`, or your own `AppDelegate`/`MainActivity` code) both receive every incoming link independently.
 - **This plugin ignores anything that isn't its own callback.** It checks the incoming URI's scheme against your configured `appCallbackScheme` and does nothing for anything else — so your other deep links (a different scheme, or the same scheme with a different host/path) pass through untouched to your own handling.
 
 ### Android (`android/app/src/main/AndroidManifest.xml`)
@@ -202,6 +200,8 @@ The package-visibility `<queries>` declaration for install detection (row 1 of t
 ```
 
 `launchMode="singleTask"` (or `singleTop`, if `taskAffinity=""` keeps this activity as the sole member of its own task) matters here: it's what makes Android route the returning deep link to your **already-running** activity via `onNewIntent` — which is what this plugin's native code listens for — instead of spinning up a fresh instance that never receives it.
+
+Write the scheme in **lowercase** here (Android matches intent-filter schemes case-sensitively, and the plugin sends the UAE Pass app a lowercase return URL). Don't add a `host` or `path` to this filter: the UAE Pass app returns to `yourappscheme://success` or `yourappscheme://failure` for both sign-in and document signing.
 
 ### iOS (`ios/Runner/Info.plist`)
 
@@ -241,6 +241,22 @@ iOS needs both an explicit query-schemes declaration (row 1 — Android gets thi
 | Android | ✅ |
 | iOS | ✅ |
 | Web | Not implemented here. UAE Pass documents a materially different flow for web (a plain full-page OAuth2 redirect against a real, reachable `redirect_uri`), not the WebView-interception app-to-app dance this package implements. `UaePassEnvironment.endpoints` and the token/profile/logout calls work unchanged on any platform if you want to drive that redirect flow yourself. |
+
+Requirements: Flutter 3.38+, Android minSdk 28 (compileSdk 37), iOS 16+.
+
+## Upgrading from 0.0.4
+
+0.0.5 moves Android sign-in to the plugin's own `WebView` dialog (the previously bundled sign-in library stopped returning from the app-to-app hand-off on recent devices) and fixes the iOS return for apps on the UIScene life cycle. Most apps need no code changes, but check these:
+
+| Change | Breaking? | What to do |
+|---|---|---|
+| Flutter **3.38** or later is required (was 3.29). | **Yes** | Upgrade Flutter. The iOS scene-delegate hook the plugin now uses was added in 3.38. |
+| Android no longer pulls in `retrofit`, `converter-gson`, `converter-scalars`, `gson` or `android-async-http`. | **Yes**, if your app used them without declaring them | Add those dependencies to your own `android/app/build.gradle(.kts)`. |
+| On Android, document signing returns to `yourappscheme://success` / `yourappscheme://failure` (was `yourappscheme:///resume_authn?url=...`), and the scheme is sent in lowercase. | **Yes**, only if your intent filter names a host/path or uses uppercase | Use the scheme-only, lowercase intent filter shown in [Android](#android-androidappsrcmainandroidmanifestxml). |
+| `UaePassConfig.uaePassClientSecret` is deprecated and ignored. | No (deprecation warning only) | Remove it. Sign-in never needs `client_secret`, so it no longer has to ship in your Android app. |
+| Android sign-in now shows the plugin's full-screen `WebView` instead of the SDK's screen; back goes back a page before cancelling. | No | None. Results are unchanged: cancelling still returns `UaePassAuthCancelled`. |
+| Native code now rejects a redirect whose `state` doesn't match the one sent. | No | None. This shows up as a `UaePassAuthFailure`. |
+| iOS now also receives the app-to-app return through the scene delegate. | No | None. This fixes the flow stalling after the UAE Pass app returns on UIScene apps (the Flutter default, and required from iOS 27). |
 
 ## Development
 

@@ -28,19 +28,14 @@ class UaePassConfig {
   /// The client ID issued to you by UAE Pass for [environment].
   final String clientId;
 
-  /// The client secret issued to you by UAE Pass for [environment],
-  /// **required on Android only**.
+  /// No longer used, and safe to remove.
   ///
-  /// UAE Pass's official native Android SDK (which this plugin vendors for
-  /// its sign-in flow) requires `client_secret` up front just to obtain an
-  /// authorization code, not only to exchange it for a token — an SDK
-  /// requirement, not a choice made here. This means the secret is
-  /// unavoidably shipped inside the app on Android once this SDK is used,
-  /// regardless of whether you otherwise use a backend `tokenExchanger` to
-  /// keep it server-side for the token-exchange step. iOS's sign-in flow
-  /// does not need it (the authorize page never requires a secret), so it's
-  /// left `null` there. Calling [UaePassKit.signIn] on Android without this
-  /// set throws [UaePassConfigurationException].
+  /// Sign-in runs in the plugin's own WebView on every platform and never
+  /// needs `client_secret`, so the secret doesn't have to ship in your app.
+  @Deprecated(
+    'No longer needed: signIn() never uses client_secret on any platform. '
+    'Remove it so the secret is not shipped in your app.',
+  )
   final String? uaePassClientSecret;
 
   /// The OAuth `redirect_uri` registered with UAE Pass for this app. This is

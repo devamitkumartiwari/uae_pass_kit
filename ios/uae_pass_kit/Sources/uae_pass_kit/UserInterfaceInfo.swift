@@ -5,10 +5,13 @@ import UIKit
 /// any presented/navigation/tab-bar controllers on top of it.
 enum UserInterfaceInfo {
   static func topViewController() -> UIViewController? {
-    let keyWindow = UIApplication.shared.connectedScenes
-      .compactMap { ($0 as? UIWindowScene)?.keyWindow }
-      .first
-    guard var top = keyWindow?.rootViewController else { return nil }
+    // Fall back to any window when none is key yet (e.g. right after the
+    // app returns to the foreground).
+    let windows = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .flatMap { $0.windows }
+    let window = windows.first { $0.isKeyWindow } ?? windows.first
+    guard var top = window?.rootViewController else { return nil }
     while true {
       if let presented = top.presentedViewController {
         top = presented

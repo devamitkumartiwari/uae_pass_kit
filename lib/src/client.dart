@@ -145,7 +145,7 @@ class UaePassKit {
   /// Starts the UAE Pass app-to-app sign-in flow.
   ///
   /// The entire browser/native-app hand-off and deep-link return is
-  /// performed natively (UAE Pass's official SDK on Android, an in-app
+  /// performed natively (an in-app `WebView` on Android, an in-app
   /// `WKWebView` on iOS) — see [UaePassKitPlatform.nativeSignIn] — rather
   /// than in Dart, which proved unreliable at surviving that hand-off.
   ///
@@ -157,22 +157,9 @@ class UaePassKit {
   /// [context] is currently unused (native code owns the UI) but kept for
   /// API stability and any future UI-adjacent behavior.
   Future<UaePassAuthResult> signIn(BuildContext context) async {
-    if (!kIsWeb &&
-        defaultTargetPlatform == TargetPlatform.android &&
-        config.uaePassClientSecret == null) {
-      throw const UaePassConfigurationException(
-        'UaePassConfig.uaePassClientSecret must be set to call signIn() on '
-        "Android — UAE Pass's official native SDK requires it up front, "
-        'even just to obtain an authorization code.',
-      );
-    }
-
     final state = UaePassStateGenerator.generate();
     await _configureNativeEnvironment();
 
-    // Only iOS's native code needs a pre-built authorize URL (it drives its
-    // own WKWebView) — Android's AAR builds this internally from the config
-    // pushed by _configureNativeEnvironment, and ignores this argument.
     final isInstalled = await isUaePassAppInstalled();
     final authorizeUrl = _buildAuthorizeUrl(
       state: state,
@@ -193,9 +180,7 @@ class UaePassKit {
     return UaePassAuthSuccess(code: code, state: state);
   }
 
-  /// Builds the `/idshub/authorize` URL — used by iOS's native `WKWebView`
-  /// flow only (Android's vendored AAR builds its own from the config
-  /// pushed by [_configureNativeEnvironment]).
+  /// Builds the `/idshub/authorize` URL the native web flow starts from.
   Uri _buildAuthorizeUrl({
     required String state,
     required bool isAppInstalled,
@@ -219,7 +204,6 @@ class UaePassKit {
   Future<void> _configureNativeEnvironment() {
     return UaePassKitPlatform.instance.setUpEnvironment(
       clientId: config.clientId,
-      clientSecret: config.uaePassClientSecret,
       isProduction: config.environment == UaePassEnvironment.production,
       appCallbackScheme: config.appCallbackScheme,
       uaePassScheme: config.environment.iosUrlScheme,

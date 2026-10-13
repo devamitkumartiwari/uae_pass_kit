@@ -210,9 +210,8 @@ void main() {
   });
 
   group('signIn', () {
-    final androidSecretConfig = UaePassConfig(
+    final signInConfig = UaePassConfig(
       clientId: 'client-1',
-      uaePassClientSecret: 'android-secret',
       redirectUri: Uri.parse('https://example.com/cb'),
       appCallbackScheme: 'testapp',
       environment: UaePassEnvironment.staging,
@@ -240,7 +239,7 @@ void main() {
         ..nextSignInCode = 'the-code';
       UaePassKitPlatform.instance = fakePlatform;
       final client = UaePassKit(
-        config: androidSecretConfig,
+        config: signInConfig,
         tokenExchanger: _FakeTokenExchanger(),
       );
 
@@ -251,9 +250,12 @@ void main() {
       expect(success.code, 'the-code');
       expect(fakePlatform.signInStates, [success.state]);
       expect(fakePlatform.setUpEnvironmentCalls.single['clientId'], 'client-1');
+      expect(fakePlatform.setUpEnvironmentCalls.single['clientSecret'], isNull);
+      final authorizeUrl = fakePlatform.signInAuthorizeUrls.single;
+      expect(authorizeUrl.queryParameters['state'], success.state);
       expect(
-        fakePlatform.setUpEnvironmentCalls.single['clientSecret'],
-        'android-secret',
+        authorizeUrl.queryParameters['redirect_uri'],
+        'https://example.com/cb',
       );
     });
 
@@ -268,7 +270,7 @@ void main() {
           );
         UaePassKitPlatform.instance = fakePlatform;
         final client = UaePassKit(
-          config: androidSecretConfig,
+          config: signInConfig,
           tokenExchanger: _FakeTokenExchanger(),
         );
 
@@ -288,7 +290,7 @@ void main() {
           );
         UaePassKitPlatform.instance = fakePlatform;
         final client = UaePassKit(
-          config: androidSecretConfig,
+          config: signInConfig,
           tokenExchanger: _FakeTokenExchanger(),
         );
 
@@ -302,19 +304,18 @@ void main() {
       },
     );
 
-    testWidgets('throws UaePassConfigurationException on Android without '
-        'uaePassClientSecret', (tester) async {
-      UaePassKitPlatform.instance = FakeUaePassKitPlatform();
+    testWidgets('does not need a client secret on Android', (tester) async {
+      final fakePlatform = FakeUaePassKitPlatform()
+        ..nextSignInCode = 'the-code';
+      UaePassKitPlatform.instance = fakePlatform;
       final client = UaePassKit(
-        config: config, // no uaePassClientSecret
+        config: config,
         tokenExchanger: _FakeTokenExchanger(),
       );
 
-      final context = await pumpContext(tester);
-      expect(
-        () => client.signIn(context),
-        throwsA(isA<UaePassConfigurationException>()),
-      );
+      final result = await client.signIn(await pumpContext(tester));
+
+      expect(result, isA<UaePassAuthSuccess>());
     }, variant: TargetPlatformVariant.only(TargetPlatform.android));
   });
 

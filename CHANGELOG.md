@@ -3,15 +3,32 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.0.5
+
+See [Upgrading from 0.0.4](README.md#upgrading-from-004) in the README for what to check when upgrading.
+
+- **Breaking:** requires Flutter 3.38 or later (was 3.29), for the iOS scene-delegate API used below.
+- **Breaking (Android):** the bundled native sign-in library and its transitive `retrofit`, `converter-gson`, `converter-scalars`, `gson` and `android-async-http` dependencies are gone. If your app used any of these without declaring them itself, add them to your own `build.gradle`.
+- **Breaking (Android):** the app-to-app return for document signing now uses the same `yourappscheme://success` / `yourappscheme://failure` URLs as sign-in, instead of `yourappscheme:///resume_authn?url=...`. An intent filter on the scheme alone (as the README shows) keeps working; one that also filtered on the `resume_authn` path must be changed. The scheme is sent to the UAE Pass app in lowercase, so the Android intent filter must use a lowercase scheme.
+- **Fixed: iOS app-to-app return on UIScene apps.** The plugin now also registers as a `UIScene` delegate (`scene(_:openURLContexts:)`). Apps on the UIScene life cycle (the default for new Flutter apps, required from iOS 27) deliver deep links there rather than to `application(_:open:options:)`, so the return from the UAE Pass app was never seen and the flow stalled. Requires Flutter 3.38 or later.
+- **Android sign-in now runs in the plugin's own native `WebView` dialog**, the same one used for document signing, mirroring iOS. The previously bundled sign-in library stopped returning from the app-to-app hand-off on recent devices; it and its retrofit/gson/android-async-http dependencies are removed.
+  - `UaePassConfig.uaePassClientSecret` is now deprecated and ignored: sign-in no longer needs `client_secret` on any platform, so it no longer has to ship in your Android app.
+  - The hand-off to the UAE Pass app changed: `uaepass://` links are retargeted at the environment's app (`uaepassstg://` on staging), and only `successurl`/`failureurl` are forwarded. In particular, the iOS-only `closeondone` is no longer passed through; with it, the Android UAE Pass app closes without returning.
+- Android `WebView` dialog hardening: content stays within the system bars, display cutout and keyboard (edge-to-edge, targetSdk 35+); back goes back a page before cancelling (with predictive back on Android 13+); DOM storage is enabled; a loading indicator is shown; the `WebView` is destroyed on close; a pending flow fails instead of hanging if the activity goes away; a second concurrent flow is rejected; and the callback scheme is matched case-insensitively.
+- iOS: `uaepass://` links are now retargeted at the environment's app the same way, fixing the staging hand-off. The web view respects the bottom safe area, and the presenting view controller is found even when no window is key yet.
+- The returned `state` is now checked against the one sent, on both platforms.
+- `logout()` also clears `WebView` storage on Android, not only cookies.
+- The plugin's `AndroidManifest.xml` now declares `INTERNET` and drops the deprecated `package` attribute.
+
 ## 0.0.4
 
 - **Breaking: the browser/native-app hand-off for `signIn()` and `signDocument()` now runs natively**, replacing the pure-Dart `webview_flutter` + `url_launcher` + `app_links` implementation, which proved unreliable at surviving the deep-link return — the flow could get stuck after control bounced out to the UAE Pass app or the system browser and never come back.
-  - **Android** vendors UAE Pass's official native SDK (`ae.sdg.libraryuaepass`, shipped as `android/libs/libraryuaepass.aar`), which owns the app-switch and `onNewIntent` resume internally for `signIn()`. `signDocument()`'s WebView step now runs in a native `android.webkit.WebView` dialog using the same app-switch/deep-link mechanics.
-  - **iOS** drives both flows through an in-app `WKWebView` (never Safari), with the plugin registered as the `UIApplication` delegate (`application(_:open:options:)`) for the app-to-app return — matching UAE Pass's own reference SDK mechanics (fixed `yourscheme://success`/`yourscheme://failure` sentinel URLs; the actual destination is cached in native state, not round-tripped through the returning deep link).
+  - **Android** uses a bundled native library for `signIn()`, which owns the app-switch and `onNewIntent` resume internally. `signDocument()`'s WebView step now runs in a native `android.webkit.WebView` dialog using the same app-switch/deep-link mechanics.
+  - **iOS** drives both flows through an in-app `WKWebView` (never Safari), with the plugin registered as the `UIApplication` delegate (`application(_:open:options:)`) for the app-to-app return (fixed `yourscheme://success`/`yourscheme://failure` sentinel URLs; the actual destination is cached in native state, not round-tripped through the returning deep link).
   - Every plain HTTPS call with no browser/deep-link involved (token exchange, profile fetch, document upload/poll/download, the logout endpoint call) is unchanged, still pure Dart.
-- **Breaking:** `UaePassConfig` gains `uaePassClientSecret` (optional in the constructor, but required to call `signIn()` on Android) — UAE Pass's official native SDK requires `client_secret` up front just to obtain an authorization code, an SDK requirement rather than a choice made here. iOS's sign-in flow does not need it.
+- **Breaking:** `UaePassConfig` gains `uaePassClientSecret` (optional in the constructor, but required to call `signIn()` on Android) — the bundled Android sign-in library requires `client_secret` up front just to obtain an authorization code. iOS's sign-in flow does not need it.
 - **Breaking:** removed `UaePassRedirectInterceptor`, `UaePassWebFlowScreen`, and the public constants `kUaePassAcrMobileOnDevice`/`kUaePassAcrPushNotificationFallback` — their responsibilities moved into native code and `UaePassKit` itself.
-- **Behavior change:** dropped the 0.0.3 `onNativeAppLaunchFailed` auto-fallback (installed-but-unopenable silently retrying as App-to-Web in the same screen) — the native SDKs this now runs on don't offer an equivalent hook, so that case now surfaces as a normal sign-in failure/cancellation instead.
+- **Behavior change:** dropped the 0.0.3 `onNativeAppLaunchFailed` auto-fallback (installed-but-unopenable silently retrying as App-to-Web in the same screen) — the native implementation has no equivalent hook, so that case now surfaces as a normal sign-in failure/cancellation instead.
 - Removed the now-unused `webview_flutter` and `app_links` dependencies, and the unused `crypto` dependency (state generation uses `dart:math`'s `Random.secure()`, not `package:crypto`).
 - `logout()` now clears cookies via native code (Android's `CookieManager`, iOS's `WKWebsiteDataStore`) instead of `webview_flutter`'s `WebViewCookieManager`.
 - README rewritten throughout to describe the native architecture, including the new `uaePassClientSecret` requirement and the `android:launchMode="singleTask"` manifest guidance the native deep-link resume depends on.
@@ -40,10 +57,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 Initial release. Full feature set, no staged/partial functionality:
 
-- App-to-app sign-in via the documented WebView-interception flow, in pure Dart (no vendored native SDKs), with graceful cancel/decline handling.
+- App-to-app sign-in via the documented WebView-interception flow, in pure Dart, with graceful cancel/decline handling.
 - Pluggable token exchange (`UaePassTokenExchanger`) so `client_secret` never has to ship in a mobile/web build; a direct sandbox-only implementation is included for local development.
-- Full profile retrieval (`getProfile`) covering the complete 37-field union found across both official native SDKs, including Arabic/English name pairs and home-address decomposition.
-- Token refresh (`refreshAccessToken`) — a capability neither official native SDK implements despite capturing `refresh_token`.
+- Full profile retrieval (`getProfile`) covering the complete 37-field profile, including Arabic/English name pairs and home-address decomposition.
+- Token refresh (`refreshAccessToken`) using the `refresh_token` UAE Pass returns.
 - Real logout (`logout`) that clears local WebView session state and notifies UAE Pass's `/idshub/logout` endpoint.
 - Document sharing / proof-of-presentation (`requestDocumentShare`) as a cancelable `Stream<DocumentShareStatus>`, delegating the HMAC-signed backend calls to your own server via `UaePassDocumentShareBackend`.
 - PDF e-signature (`signDocument`) wrapping the `esignsp/v2` flow, including multi-signer field placement and Emirates ID signature-image embedding.

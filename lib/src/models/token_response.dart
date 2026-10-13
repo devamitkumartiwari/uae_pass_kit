@@ -4,9 +4,7 @@
 /// [expiresIn] and [scope] — there is no `id_token`/JWKS, so UAE Pass
 /// behaves as plain OAuth2 rather than full OIDC. [refreshToken] and
 /// [idToken] are included here as nullable fields in case a given
-/// deployment does return them (both official native SDKs' own token
-/// models capture them defensively too), but neither should be assumed
-/// present.
+/// deployment does return them, but neither should be assumed present.
 class UaePassTokenResponse {
   /// Creates a token response.
   const UaePassTokenResponse({

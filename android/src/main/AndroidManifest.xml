@@ -1,19 +1,19 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.therivanta.uae_pass_kit">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!-- The sign-in/signing WebView, and the Dart-side HTTPS calls. -->
+  <uses-permission android:name="android.permission.INTERNET" />
 
   <!--
     Android 11+ (API 30+) package-visibility: without this <queries>
     declaration, PackageManager.getPackageInfo() for the UAE Pass app
-    silently fails as if it were never installed, even when it is — a
-    well-documented class of bug ("UAE Pass app not found" despite being
-    installed) in prior community wrappers. Declared here, in the plugin's
+    silently fails as if it were never installed, even when it is.
+    Declared here, in the plugin's
     own manifest, so it merges into every consuming app automatically and
     can never be forgotten.
 
     Limited to staging and production only, matching this plugin's
-    UaePassEnvironment — the qa/dev package IDs found while researching the
-    official SDK are UAE Pass's own internal environments, never issued to
-    integrators, and are intentionally not queried here.
+    UaePassEnvironment — UAE Pass's internal qa/dev environments are never
+    issued to integrators, and are intentionally not queried here.
   -->
   <queries>
     <package android:name="ae.uaepass.mainapp" />

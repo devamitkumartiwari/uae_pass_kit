@@ -58,9 +58,9 @@ final class UaePassWebFlowViewController: UIViewController, WKNavigationDelegate
     view.addSubview(webView)
     NSLayoutConstraint.activate([
       webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-      webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-      webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-      webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      webView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+      webView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+      webView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
     ])
 
     webView.load(URLRequest(url: initialUrl))
@@ -115,7 +115,10 @@ final class UaePassWebFlowViewController: UIViewController, WKNavigationDelegate
       return
     }
 
-    if url.scheme == uaePassScheme {
+    // UAE Pass's pages always link to `uaepass://`, whatever the environment;
+    // retarget it at the environment's own app
+    // (e.g. `uaepassstg://` on staging) before handing off.
+    if url.scheme == "uaepass" || url.scheme == uaePassScheme {
       decisionHandler(.cancel)
       let rewritten = rewriteForNativeAppHandoff(url)
       if UIApplication.shared.canOpenURL(rewritten) {
@@ -145,15 +148,15 @@ final class UaePassWebFlowViewController: UIViewController, WKNavigationDelegate
   /// `appCallbackScheme://failure` sentinel URLs instead of its own
   /// default, first caching each original value into [cachedSuccessUrl] /
   /// [cachedFailureUrl] so [forceReload] can resume the flow with it once
-  /// the sentinel comes back — matching UAE Pass's own reference SDK
-  /// mechanics exactly (fixed sentinel URLs carry no payload; the actual
-  /// destination is cached locally, not round-tripped through the OS).
+  /// the sentinel comes back (fixed sentinel URLs carry no payload; the
+  /// actual destination is cached locally, not round-tripped through the OS).
   private func rewriteForNativeAppHandoff(_ url: URL) -> URL {
     guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false),
           let items = components.queryItems
     else {
       return url
     }
+    components.scheme = uaePassScheme
     components.queryItems = items.map { item in
       switch item.name {
       case "successurl", "successURL", "successUrl":

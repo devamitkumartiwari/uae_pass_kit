@@ -78,6 +78,12 @@ internal class UaePassWebFlowDialog(
 
         window?.apply {
             setLayout(MATCH, MATCH)
+            // Deprecated since Android 11, but still the only way to keep the
+            // page above the keyboard when the window fits the system windows:
+            // on Android 7-10, and in apps targeting API 34 or lower. In an
+            // edge-to-edge window (targetSdk 35+ on Android 15+) it has no
+            // effect, and applySafeAreaPadding handles the keyboard instead.
+            @Suppress("DEPRECATION")
             setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 // White background behind the bars, so request dark bar icons.

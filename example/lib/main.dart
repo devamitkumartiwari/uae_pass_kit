@@ -12,8 +12,8 @@ void main() {
   runApp(const UaePassKitExampleApp());
 }
 
-/// The gold accent used for the example's Material 3 colour scheme.
-const _brandSeed = Color(0xFFAD904C);
+/// The teal used to seed the example's Material 3 colour scheme.
+const _brandSeed = Color(0xFF00897B);
 
 class UaePassKitExampleApp extends StatelessWidget {
   const UaePassKitExampleApp({super.key});

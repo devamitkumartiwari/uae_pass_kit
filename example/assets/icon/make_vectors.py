@@ -66,7 +66,7 @@ head = ('<?xml version="1.0" encoding="utf-8"?>\n'
         f'    android:viewportWidth="{W}" android:viewportHeight="{W}">\n')
 open(f'{out}/ic_launcher_foreground.xml', 'w').write(head +
   f'    <path android:fillColor="#FFFFFF" android:pathData="{shield}"/>\n'
-  f'    <path android:strokeColor="#AD904C" android:strokeWidth="70"\n'
+  f'    <path android:strokeColor="#00897B" android:strokeWidth="70"\n'
   f'        android:strokeLineCap="round" android:strokeLineJoin="round"\n'
   f'        android:pathData="{check_stroke}"/>\n</vector>\n')
 open(f'{out}/ic_launcher_monochrome.xml', 'w').write(head +

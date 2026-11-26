@@ -7,7 +7,7 @@ Needs Pillow (pip install pillow).
 import os
 from PIL import Image, ImageChops
 
-GOLD = (0xAD, 0x90, 0x4C)
+BRAND = (0x00, 0x89, 0x7B)  # teal
 IOS = 'ios/Runner/Assets.xcassets/AppIcon.appiconset'
 
 
@@ -15,10 +15,10 @@ def save_ios_icons():
     # Light and tinted icons must be opaque (the App Store rejects alpha).
     Image.open('assets/icon/icon.png').convert('RGB').save(f'{IOS}/Icon-App-1024x1024@1x.png')
     Image.open('assets/icon/icon_tinted.png').convert('RGB').save(f'{IOS}/Icon-App-Tinted-1024x1024@1x.png')
-    # Dark icon: gold at varying opacity. Using exactly one RGB value keeps it
+    # Dark icon: teal at varying opacity. Using exactly one RGB value keeps it
     # under 256 colours, so it can be stored losslessly as a palette PNG.
     alpha = Image.open('assets/icon/icon_dark.png').convert('RGBA').getchannel('A')
-    Image.merge('RGBA', (*Image.new('RGB', alpha.size, GOLD).split(), alpha)).save(
+    Image.merge('RGBA', (*Image.new('RGB', alpha.size, BRAND).split(), alpha)).save(
         f'{IOS}/Icon-App-Dark-1024x1024@1x.png')
 
 

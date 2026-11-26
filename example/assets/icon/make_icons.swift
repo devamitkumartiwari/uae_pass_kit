@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 // Draws the uae_pass_kit example's original icon (a shield with a check
 // mark) in the variants flutter_launcher_icons needs.
 let size = 1024
-let gold = CGColor(srgbRed: 0xAD/255, green: 0x90/255, blue: 0x4C/255, alpha: 1)
+let brand = CGColor(srgbRed: 0x00/255, green: 0x89/255, blue: 0x7B/255, alpha: 1)  // teal
 let white = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1)
 let black = CGColor(srgbRed: 0, green: 0, blue: 0, alpha: 1)
 let outDir = CommandLine.arguments[1]
@@ -77,12 +77,12 @@ func render(_ name: String, background: CGColor?, shieldColor: CGColor,
 }
 
 // Full-bleed icon (iOS light, legacy Android, web).
-render("icon.png", background: gold, shieldColor: white, check: .color(gold), scale: 1)
+render("icon.png", background: brand, shieldColor: white, check: .color(brand), scale: 1)
 // Android adaptive foreground: inside the 66% safe zone, on transparent.
-render("icon_foreground.png", background: nil, shieldColor: white, check: .color(gold), scale: 1)
+render("icon_foreground.png", background: nil, shieldColor: white, check: .color(brand), scale: 1)
 // Android 13+ themed (monochrome) icon.
 render("icon_monochrome.png", background: nil, shieldColor: white, check: .cutOut, scale: 1)
 // iOS 18 dark: transparent background, the system draws the dark backdrop.
-render("icon_dark.png", background: nil, shieldColor: gold, check: .cutOut, scale: 1)
+render("icon_dark.png", background: nil, shieldColor: brand, check: .cutOut, scale: 1)
 // iOS 18 tinted: grayscale on black.
 render("icon_tinted.png", background: black, shieldColor: white, check: .color(black), scale: 1)

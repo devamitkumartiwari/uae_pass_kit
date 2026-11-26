@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from the example's icon geometry; see pubspec.yaml. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="1024" android:viewportHeight="1024">
+    <path android:fillColor="#FFFFFF" android:fillType="evenOdd"
+        android:pathData="M512,192C605.6,230.4 699.2,268.8 772,281.6L772,499.2C772,691.2 626.4,768 512,832C397.6,768 252,691.2 252,499.2L252,281.6C324.8,268.8 418.4,230.4 512,192ZM367.3,526.7L457.3,616.7A35,35 0 0,0 508.1,615.3L678.1,425.3A35,35 0 0,0 625.9,378.7L480.6,541.1L416.7,477.3A35,35 0 0,0 367.3,526.7Z"/>
+</vector>

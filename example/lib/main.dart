@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:uae_pass_kit/uae_pass_kit.dart';
 
 /// UAE Pass's own publicly documented staging POC credentials.
@@ -12,55 +12,38 @@ void main() {
   runApp(const UaePassKitExampleApp());
 }
 
+/// The gold accent used for the example's Material 3 colour scheme.
+const _brandSeed = Color(0xFFAD904C);
+
 class UaePassKitExampleApp extends StatelessWidget {
   const UaePassKitExampleApp({super.key});
+
+  static ThemeData _theme(Brightness brightness) {
+    return ThemeData(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: _brandSeed,
+        brightness: brightness,
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(56),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'UAE PASS Kit',
+      title: 'UAE Pass Kit',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFAD904C), // Professional Gold
-          brightness: Brightness.light,
-          primary: const Color(0xFF1A1A1A), // Dark accents
-          secondary: const Color(0xFFAD904C),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.grey.shade200),
-          ),
-          color: Colors.white,
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1A1A1A),
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(56),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            textStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            side: const BorderSide(color: Color(0xFF1A1A1A)),
-            foregroundColor: const Color(0xFF1A1A1A),
-          ),
-        ),
-      ),
+      theme: _theme(Brightness.light),
+      darkTheme: _theme(Brightness.dark),
+      themeMode: ThemeMode.system,
       home: const SignInPage(),
     );
   }
@@ -322,7 +305,17 @@ class _SignInPageState extends State<SignInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        title: const Text('UAE Pass Kit'),
+        actions: [
+          if (_profile != null)
+            IconButton(
+              tooltip: 'Sign out',
+              onPressed: _isBusy ? null : _signOut,
+              icon: const Icon(Icons.logout),
+            ),
+        ],
+      ),
       body: SafeArea(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 400),
@@ -333,71 +326,58 @@ class _SignInPageState extends State<SignInPage> {
   }
 
   Widget _buildLoginView() {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     return SingleChildScrollView(
       key: const ValueKey('login_view'),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: 40),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: const Icon(
+          CircleAvatar(
+            radius: 56,
+            backgroundColor: colors.primaryContainer,
+            child: Icon(
               Icons.fingerprint,
-              size: 80,
-              color: Color(0xFFAD904C),
+              size: 72,
+              color: colors.onPrimaryContainer,
             ),
           ),
           const SizedBox(height: 32),
           Text(
-            'UAE PASS',
-            style: Theme.of(context).textTheme.headlineMedium
-                ?.copyWith(fontWeight: FontWeight.bold, letterSpacing: 2),
+            'UAE Pass Kit',
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Your secure digital identity',
-            style: Theme.of(context).textTheme.bodyLarge
-                ?.copyWith(color: Colors.grey.shade600),
+            'Unofficial UAE PASS sign-in demo (staging)',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
           ),
-          const SizedBox(height: 64),
-          ElevatedButton.icon(
+          const SizedBox(height: 56),
+          FilledButton.icon(
             onPressed: _isBusy ? null : _signIn,
             icon: _isBusy
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.login),
             label: Text(_isBusy ? 'Connecting...' : 'Sign in with UAE PASS'),
           ),
           if (_statusMessage != null) ...[
             const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _statusMessage!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.red.shade800, fontSize: 14),
+            Card.filled(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  _statusMessage!,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium,
+                ),
               ),
             ),
           ],
@@ -410,6 +390,8 @@ class _SignInPageState extends State<SignInPage> {
 
   Widget _buildProfileView() {
     final profile = _profile!;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     return SingleChildScrollView(
       key: const ValueKey('profile_view'),
       padding: const EdgeInsets.all(24),
@@ -418,34 +400,31 @@ class _SignInPageState extends State<SignInPage> {
         children: [
           Row(
             children: [
-              IconButton(
-                onPressed: _signOut,
-                icon: const Icon(Icons.logout),
-                style: IconButton.styleFrom(backgroundColor: Colors.white),
-              ),
+              if (_lastFlowType != null)
+                _FlowTypeChip(flowType: _lastFlowType!),
               const Spacer(),
-              const Text('EN', style: TextStyle(fontWeight: FontWeight.bold)),
-              Switch(
-                value: _showArabic,
-                activeThumbColor: const Color(0xFFAD904C),
-                onChanged: (v) => setState(() => _showArabic = v),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: false, label: Text('EN')),
+                  ButtonSegment(value: true, label: Text('AR')),
+                ],
+                selected: {_showArabic},
+                showSelectedIcon: false,
+                onSelectionChanged: (v) =>
+                    setState(() => _showArabic = v.first),
               ),
-              const Text('AR', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
-          if (_lastFlowType != null) ...[
-            const SizedBox(height: 12),
-            _FlowTypeChip(flowType: _lastFlowType!),
-          ],
           const SizedBox(height: 24),
-          Text('Welcome,', style: Theme.of(context).textTheme.titleLarge),
+          Text('Welcome,', style: theme.textTheme.titleLarge),
           Text(
             (_showArabic ? profile.fullNameAr : profile.fullNameEn) ?? 'User',
-            style: Theme.of(context).textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          const SizedBox(height: 32),
-          Card(
+          const SizedBox(height: 24),
+          Card.outlined(
             child: Column(
               children: [
                 _ProfileListTile(
@@ -477,54 +456,58 @@ class _SignInPageState extends State<SignInPage> {
             ),
           ),
           const SizedBox(height: 32),
-          Text(
-            'Actions',
-            style: Theme.of(context).textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
+          Text('Actions', style: theme.textTheme.titleMedium),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: _isBusy ? null : _refreshToken,
-            icon: const Icon(Icons.refresh, size: 20),
-            label: const Text('Refresh Session'),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Refresh session'),
           ),
+          if (_statusMessage != null) _ResultText(_statusMessage!),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: _isBusy ? null : _signSampleDocument,
-            icon: const Icon(Icons.assignment_turned_in_outlined, size: 20),
-            label: const Text('Digital Signature (Sandbox)'),
+            icon: const Icon(Icons.draw_outlined),
+            label: const Text('Digital signature (sandbox)'),
           ),
-          if (_signingStatus != null) ...[
-            Padding(
-              padding: const EdgeInsets.only(top: 8, left: 4),
-              child: Text(
-                _signingStatus!,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-              ),
-            ),
-          ],
+          if (_signingStatus != null) _ResultText(_signingStatus!),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: _isBusy ? null : _requestDocumentShare,
-            icon: const Icon(Icons.share_outlined, size: 20),
-            label: const Text('Request Document Sharing'),
+            icon: const Icon(Icons.share_outlined),
+            label: const Text('Request document sharing'),
           ),
-          if (_documentShareStatus != null) ...[
-            Padding(
-              padding: const EdgeInsets.only(top: 8, left: 4),
-              child: Text(
-                _documentShareStatus!,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-              ),
-            ),
-          ],
+          if (_documentShareStatus != null) _ResultText(_documentShareStatus!),
           const SizedBox(height: 40),
           Text(
-            'Note: Some features require a backend integration as described in the README.',
+            'Some features need a backend integration, as described in the '
+            'README.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A short result line shown under an action button.
+class _ResultText extends StatelessWidget {
+  const _ResultText(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, left: 4),
+      child: Text(
+        text,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -539,18 +522,9 @@ class _FlowTypeChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAppToApp = flowType == 'App-to-App';
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Chip(
-        avatar: Icon(
-          isAppToApp ? Icons.phone_iphone : Icons.public,
-          size: 18,
-          color: const Color(0xFFAD904C),
-        ),
-        label: Text('Signed in via $flowType'),
-        backgroundColor: const Color(0xFFAD904C).withValues(alpha: 0.1),
-        side: BorderSide.none,
-      ),
+    return Chip(
+      avatar: Icon(isAppToApp ? Icons.phone_iphone : Icons.public, size: 18),
+      label: Text(flowType),
     );
   }
 }
@@ -561,36 +535,28 @@ class _AppStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Icon(
-              isInstalled == true
-                  ? Icons.check_circle_outline
-                  : isInstalled == false
-                  ? Icons.error_outline
-                  : Icons.hourglass_empty,
-              color: isInstalled == true
-                  ? Colors.green
-                  : isInstalled == false
-                  ? Colors.orange
-                  : Colors.grey,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                isInstalled == null
-                    ? 'Checking UAE PASS app...'
-                    : isInstalled!
-                    ? 'UAE PASS app is installed'
-                    : 'UAE PASS app is not detected',
-                style: const TextStyle(fontSize: 13),
-              ),
-            ),
-          ],
-        ),
+    final colors = Theme.of(context).colorScheme;
+    final (icon, color, text) = switch (isInstalled) {
+      true => (
+        Icons.check_circle_outline,
+        colors.primary,
+        'UAE PASS app is installed',
+      ),
+      false => (
+        Icons.info_outline,
+        colors.tertiary,
+        'UAE PASS app is not detected (App-to-Web flow)',
+      ),
+      null => (
+        Icons.hourglass_empty,
+        colors.outline,
+        'Checking for the UAE PASS app...',
+      ),
+    };
+    return Card.outlined(
+      child: ListTile(
+        leading: Icon(icon, color: color),
+        title: Text(text),
       ),
     );
   }
@@ -605,25 +571,16 @@ class _ProfileListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFFAD904C)),
+      leading: Icon(icon, color: theme.colorScheme.primary),
       title: Text(
         label,
-        style: TextStyle(
-          fontSize: 12,
-          color: Colors.grey.shade600,
-          fontWeight: FontWeight.w500,
+        style: theme.textTheme.labelMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
-      subtitle: Text(
-        value ?? '—',
-        style: const TextStyle(
-          fontSize: 16,
-          color: Colors.black87,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      dense: true,
+      subtitle: Text(value ?? '—', style: theme.textTheme.titleMedium),
     );
   }
 }

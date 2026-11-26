@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
 import '../exceptions.dart';
+import 'transport_error.dart' if (dart.library.io) 'transport_error_io.dart';
 
 /// A thin HTTP helper shared by every UAE Pass API call in this plugin.
 ///
@@ -73,12 +73,10 @@ class UaePassHttpClient {
   Future<http.Response> _guard(Future<http.Response> Function() send) async {
     try {
       return await send();
-    } on SocketException catch (e) {
-      throw UaePassNetworkException('No network connection.', cause: e);
-    } on HttpException catch (e) {
-      throw UaePassNetworkException('HTTP transport error.', cause: e);
-    } on http.ClientException catch (e) {
-      throw UaePassNetworkException('HTTP client error.', cause: e);
+    } catch (e) {
+      final message = transportErrorMessage(e);
+      if (message == null) rethrow;
+      throw UaePassNetworkException(message, cause: e);
     }
   }
 

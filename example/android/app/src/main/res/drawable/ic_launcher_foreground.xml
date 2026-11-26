@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from the example's icon geometry; see pubspec.yaml. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="1024" android:viewportHeight="1024">
+    <path android:fillColor="#FFFFFF" android:pathData="M512,192C605.6,230.4 699.2,268.8 772,281.6L772,499.2C772,691.2 626.4,768 512,832C397.6,768 252,691.2 252,499.2L252,281.6C324.8,268.8 418.4,230.4 512,192Z"/>
+    <path android:strokeColor="#AD904C" android:strokeWidth="70"
+        android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M392,502L482,592L652,402"/>
+</vector>

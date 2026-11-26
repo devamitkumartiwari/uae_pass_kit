@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -72,6 +73,50 @@ void main() {
         );
       },
     );
+
+    group('maps native transport errors to the same messages as before', () {
+      Future<void> expectMessage(Object error, String message) async {
+        final client = UaePassHttpClient(
+          client: MockClient((request) async => throw error),
+        );
+        await expectLater(
+          client.getJson(Uri.parse('https://x/y')),
+          throwsA(
+            isA<UaePassNetworkException>()
+                .having((e) => e.message, 'message', message)
+                .having((e) => e.cause, 'cause', same(error)),
+          ),
+        );
+      }
+
+      test('SocketException', () async {
+        await expectMessage(
+          const SocketException('offline'),
+          'No network connection.',
+        );
+      });
+
+      test('HttpException', () async {
+        await expectMessage(
+          const HttpException('reset'),
+          'HTTP transport error.',
+        );
+      });
+
+      test('ClientException', () async {
+        await expectMessage(http.ClientException('boom'), 'HTTP client error.');
+      });
+
+      test('other errors are not wrapped', () async {
+        final client = UaePassHttpClient(
+          client: MockClient((request) async => throw StateError('bug')),
+        );
+        await expectLater(
+          client.getJson(Uri.parse('https://x/y')),
+          throwsA(isA<StateError>()),
+        );
+      });
+    });
 
     test('postMultipart sends multipart/form-data, matching UAE Pass\'s '
         'documented token-endpoint requirement', () async {

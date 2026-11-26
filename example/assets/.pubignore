@@ -1,0 +1,3 @@
+# The 1024 px icon masters are only inputs for regenerating the launcher
+# icons, so they stay in git but are left out of the published package.
+icon/

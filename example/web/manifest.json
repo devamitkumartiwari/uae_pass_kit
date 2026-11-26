@@ -1,11 +1,11 @@
 {
-    "name": "uae_pass_kit_example",
-    "short_name": "uae_pass_kit_example",
+    "name": "UAE Pass Kit",
+    "short_name": "UAE Pass Kit",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Demonstrates how to use the uae_pass_kit plugin.",
+    "background_color": "#AD904C",
+    "theme_color": "#AD904C",
+    "description": "Demo app for uae_pass_kit, an unofficial Flutter plugin for UAE Pass.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

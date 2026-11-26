@@ -3,9 +3,24 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.0.6
+
+See [Upgrading from 0.0.5](doc/advanced.md#upgrading-from-005) for what to check when upgrading.
+
+- **Breaking:** requires Flutter 3.50 / Dart 3.14 or later (was 3.38). The project is rebuilt on the Flutter 3.50 templates (AGP 9.3.1, Kotlin 2.4.20, Gradle 9.5.0).
+- **Breaking (iOS):** CocoaPods support is removed; the iOS plugin is a Swift package only. Swift Package Manager is on by default from Flutter 3.50. Apps that turned it off get a build error naming `uae_pass_kit` and must turn it back on. Other plugins in your app can still use CocoaPods.
+- **Android 7.0+:** `minSdk` lowered from 28 to 24. All newer APIs the plugin uses (window insets, predictive back) are already behind version checks, and Android lint reports no `NewApi` issues.
+- **Fixed (Android):** the plugin's `compileSdk` is now 36, the Flutter 3.50 default, instead of 37. With 37, a new Flutter app failed to build with "Dependency ':uae_pass_kit' requires libraries and applications that depend on it to compile against version 37 or later". Apps can still compile against and target 37.
+- **Fixed (Web):** the package declared web support but imported `dart:io`, so it failed to compile for web and WASM. That import is now native-only (a conditional import); on Android and iOS, network errors produce the same `UaePassNetworkException` messages as before. The package is now WASM-compatible.
+- **Fixed (iOS):** the privacy manifest (`PrivacyInfo.xcprivacy`) is now bundled with the Swift package; it was previously left out.
+- The plugin's Dart code no longer imports `package:flutter/material.dart` (deprecated from Flutter 3.47); it only needs `package:flutter/widgets.dart`, so it adds no Material dependency to your app.
+- Added Kotlin unit tests for the Android method-call handler, and replaced the iOS `RunnerTests`, which tested a `getPlatformVersion` method that no longer exists, with tests of the real Swift handler.
+- Example app rebuilt from the Flutter 3.50 template and renamed "UAE Pass Kit": Material 3 through `package:material_ui` with light and dark themes, new launcher icons (Android adaptive and themed, iOS 18 dark and tinted, web), Android 7.0+ (compiles against and targets API 37) / iOS 16+. The refresh-token result is now shown on the profile screen, where it was previously hidden.
+- README rewritten as a shorter, task-focused guide; the deep-link walkthrough, configuration options, errors and upgrade notes moved to [doc/advanced.md](doc/advanced.md).
+
 ## 0.0.5
 
-See [Upgrading from 0.0.4](README.md#upgrading-from-004) in the README for what to check when upgrading.
+See [Upgrading from 0.0.4](doc/advanced.md#upgrading-from-004) for what to check when upgrading.
 
 - **Breaking:** requires Flutter 3.38 or later (was 3.29), for the iOS scene-delegate API used below.
 - **Breaking (Android):** the bundled native sign-in library and its transitive `retrofit`, `converter-gson`, `converter-scalars`, `gson` and `android-async-http` dependencies are gone. If your app used any of these without declaring them itself, add them to your own `build.gradle`.
